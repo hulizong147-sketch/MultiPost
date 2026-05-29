@@ -1,0 +1,14 @@
+{
+  "name": "multipost",
+  "private": true,
+  "scripts": {
+    "dev:api": "pnpm --filter @multipost/api dev",
+    "dev:web": "pnpm --filter @multipost/web dev",
+    "dev": "pnpm run --parallel dev:api dev:web",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
