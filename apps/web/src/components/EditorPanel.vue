@@ -51,9 +51,18 @@ onMounted(() => {
   })
 })
 
+function setContent(text: string) {
+  if (!editorView) return
+  editorView.dispatch({
+    changes: { from: 0, to: editorView.state.doc.length, insert: text },
+  })
+}
+
 onBeforeUnmount(() => {
   editorView?.destroy()
 })
+
+defineExpose({ setContent })
 </script>
 
 <template>

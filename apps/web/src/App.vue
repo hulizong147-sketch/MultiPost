@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import EditorPanel from './components/EditorPanel.vue'
 import PlatformSelector from './components/PlatformSelector.vue'
 import PreviewGrid from './components/PreviewGrid.vue'
@@ -6,6 +7,7 @@ import TransformButton from './components/TransformButton.vue'
 import { useEditorStore } from './stores/editor'
 
 const store = useEditorStore()
+const editorRef = ref<InstanceType<typeof EditorPanel> | null>(null)
 </script>
 
 <template>
@@ -16,20 +18,28 @@ const store = useEditorStore()
         <span class="subtitle">一次创作，多平台分发</span>
       </div>
       <div class="header-actions">
+        <button class="sample-btn" @click="store.loadSample(editorRef)">加载示例</button>
         <PlatformSelector />
         <TransformButton />
+        <button
+          v-if="Object.keys(store.results).length"
+          class="copy-all-btn"
+          @click="store.copyAll()"
+        >
+          复制全部
+        </button>
       </div>
     </header>
 
     <main class="main">
       <aside class="editor-pane">
-        <EditorPanel />
+        <EditorPanel ref="editorRef" />
       </aside>
       <section class="preview-pane">
         <div v-if="store.selectedPlatforms.length === 0" class="empty-state">
           <div class="empty-icon">&#8593;</div>
-          <p>在上方选择目标平台</p>
-          <p class="empty-hint">支持微信公众号、知乎、小红书</p>
+          <p>在上方选择目标平台，或</p>
+          <button class="empty-sample-btn" @click="store.loadSample(editorRef)">加载示例内容</button>
         </div>
         <PreviewGrid v-else />
       </section>
@@ -87,7 +97,28 @@ body {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+}
+
+.sample-btn, .copy-all-btn {
+  padding: 5px 12px;
+  border: 1px solid #3a3a55;
+  border-radius: 6px;
+  background: transparent;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sample-btn:hover, .copy-all-btn:hover {
+  border-color: #7f77dd;
+  color: #ccc;
+}
+
+.copy-all-btn {
+  border-color: #7f77dd;
+  color: #7f77dd;
 }
 
 .main {
@@ -113,7 +144,7 @@ body {
   align-items: center;
   justify-content: center;
   height: 100%;
-  gap: 8px;
+  gap: 10px;
 }
 
 .empty-icon {
@@ -127,8 +158,19 @@ body {
   font-size: 14px;
 }
 
-.empty-hint {
-  font-size: 12px !important;
-  color: #444 !important;
+.empty-sample-btn {
+  padding: 8px 20px;
+  border: 1px solid #7f77dd;
+  border-radius: 6px;
+  background: transparent;
+  color: #7f77dd;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.empty-sample-btn:hover {
+  background: #7f77dd;
+  color: #fff;
 }
 </style>
