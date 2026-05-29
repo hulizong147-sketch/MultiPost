@@ -16,23 +16,24 @@ const store = useEditorStore()
 
 <style scoped>
 .transform-btn {
-  padding: 8px 20px;
+  padding: 6px 18px;
   border: none;
   border-radius: 6px;
-  background: #1a1a2e;
+  background: #7f77dd;
   color: #fff;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .transform-btn:hover:not(:disabled) {
-  background: #2d2d4e;
+  background: #9289e8;
 }
 
 .transform-btn:disabled {
-  background: #ccc;
+  background: #333;
+  color: #666;
   cursor: not-allowed;
 }
 </style>

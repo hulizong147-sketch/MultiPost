@@ -11,8 +11,10 @@ const store = useEditorStore()
 <template>
   <div class="app">
     <header class="header">
-      <h1 class="logo">MultiPost</h1>
-      <span class="subtitle">一次创作，多平台分发</span>
+      <div class="brand">
+        <h1 class="logo">MultiPost</h1>
+        <span class="subtitle">一次创作，多平台分发</span>
+      </div>
       <div class="header-actions">
         <PlatformSelector />
         <TransformButton />
@@ -20,15 +22,17 @@ const store = useEditorStore()
     </header>
 
     <main class="main">
-      <div class="editor-pane">
+      <aside class="editor-pane">
         <EditorPanel />
-      </div>
-      <div class="preview-pane">
+      </aside>
+      <section class="preview-pane">
         <div v-if="store.selectedPlatforms.length === 0" class="empty-state">
-          请在上方选择目标平台
+          <div class="empty-icon">&#8593;</div>
+          <p>在上方选择目标平台</p>
+          <p class="empty-hint">支持微信公众号、知乎、小红书</p>
         </div>
         <PreviewGrid v-else />
-      </div>
+      </section>
     </main>
   </div>
 </template>
@@ -41,9 +45,9 @@ const store = useEditorStore()
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f5f5f5;
-  color: #333;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  background: #0f0f1a;
+  color: #e0e0e0;
 }
 
 .app {
@@ -55,29 +59,35 @@ body {
 .header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 24px;
-  background: #fff;
-  border-bottom: 1px solid #e5e5e5;
+  justify-content: space-between;
+  padding: 10px 24px;
+  background: #16162a;
+  border-bottom: 1px solid #2a2a40;
   flex-shrink: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
 }
 
 .logo {
   font-size: 20px;
   font-weight: 700;
-  color: #1a1a2e;
+  color: #7f77dd;
+  letter-spacing: -0.5px;
 }
 
 .subtitle {
   font-size: 13px;
-  color: #999;
+  color: #666;
 }
 
 .header-actions {
-  margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .main {
@@ -88,22 +98,37 @@ body {
 
 .editor-pane {
   width: 50%;
-  border-right: 1px solid #e5e5e5;
-  overflow-y: auto;
+  border-right: 1px solid #2a2a40;
 }
 
 .preview-pane {
   width: 50%;
   overflow-y: auto;
-  background: #fff;
+  background: #16162a;
 }
 
 .empty-state {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #999;
+  gap: 8px;
+}
+
+.empty-icon {
+  font-size: 32px;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.empty-state p {
+  color: #666;
   font-size: 14px;
+}
+
+.empty-hint {
+  font-size: 12px !important;
+  color: #444 !important;
 }
 </style>

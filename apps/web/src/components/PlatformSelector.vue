@@ -20,26 +20,28 @@ const store = useEditorStore()
 <style scoped>
 .selector {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .platform-btn {
-  padding: 6px 16px;
-  border: 1px solid #ddd;
+  padding: 5px 14px;
+  border: 1px solid #3a3a55;
   border-radius: 6px;
-  background: #fff;
+  background: transparent;
+  color: #888;
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .platform-btn:hover {
-  border-color: #1a1a2e;
+  border-color: #7f77dd;
+  color: #ccc;
 }
 
 .platform-btn.active {
-  background: #1a1a2e;
+  background: #7f77dd;
   color: #fff;
-  border-color: #1a1a2e;
+  border-color: #7f77dd;
 }
 </style>
