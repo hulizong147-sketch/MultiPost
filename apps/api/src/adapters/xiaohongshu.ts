@@ -45,11 +45,24 @@ export class XiaohongshuAdapter extends BasePlatformAdapter {
 
 function stripMarkdown(md: string): string {
   return md
+    // 代码块 → 保留内容去掉标记
+    .replace(/```[\s\S]*?```/g, (match) => {
+      return match.replace(/```\w*\n?/g, '').replace(/```/g, '')
+    })
+    // 行内代码
+    .replace(/`([^`]+)`/g, '$1')
+    // 标题
     .replace(/^#{1,6}\s/gm, '')
+    // 粗体/斜体
     .replace(/\*\*(.+?)\*\*/g, '$1')
     .replace(/\*(.+?)\*/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
+    // 链接
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    // 图片
     .replace(/!\[[^\]]*\]\([^)]+\)/g, '[图片]')
+    // 引用标记
+    .replace(/^>\s?/gm, '')
+    // 分隔线
+    .replace(/^[-*_]{3,}$/gm, '---')
     .trim()
 }
