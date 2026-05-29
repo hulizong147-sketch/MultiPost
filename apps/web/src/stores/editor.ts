@@ -15,6 +15,8 @@ export const useEditorStore = defineStore('editor', () => {
     { type: PlatformType.WECHAT_MP, label: '公众号' },
     { type: PlatformType.ZHIHU, label: '知乎' },
     { type: PlatformType.XIAOHONGSHU, label: '小红书' },
+    { type: PlatformType.BILIBILI, label: 'B站' },
+    { type: PlatformType.TOUTIAO, label: '头条' },
   ]
 
   function togglePlatform(type: PlatformType) {

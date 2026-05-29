@@ -3,6 +3,8 @@ import type { BasePlatformAdapter } from './base.js'
 import { WeChatAdapter } from './wechat.js'
 import { ZhihuAdapter } from './zhihu.js'
 import { XiaohongshuAdapter } from './xiaohongshu.js'
+import { BilibiliAdapter } from './bilibili.js'
+import { ToutiaoAdapter } from './toutiao.js'
 
 class AdapterRegistry {
   private adapters = new Map<string, BasePlatformAdapter>()
@@ -30,3 +32,5 @@ export const adapterRegistry = new AdapterRegistry()
 adapterRegistry.register(new WeChatAdapter())
 adapterRegistry.register(new ZhihuAdapter())
 adapterRegistry.register(new XiaohongshuAdapter())
+adapterRegistry.register(new BilibiliAdapter())
+adapterRegistry.register(new ToutiaoAdapter())
