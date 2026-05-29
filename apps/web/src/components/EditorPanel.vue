@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { EditorView, keymap, placeholder, lineNumbers } from '@codemirror/view'
 import { EditorState } from '@codemirror/state'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
@@ -36,14 +36,22 @@ onMounted(() => {
         markdown({ base: markdownLanguage, codeLanguages: languages }),
         oneDark,
         lineNumbers(),
-        placeholder('在此输入 Markdown...\n\n# 标题\n**粗体** *斜体*\n- 列表\n[链接](url)'),
+        placeholder('Start writing...'),
         keymap.of(defaultKeymap),
         updateListener,
         EditorView.theme({
-          '&': { height: '100%', fontSize: '14px' },
-          '.cm-scroller': { overflow: 'auto', fontFamily: "'JetBrains Mono', 'Fira Code', monospace" },
-          '.cm-content': { padding: '20px', lineHeight: '1.8' },
-          '.cm-gutters': { borderRight: '1px solid #333', backgroundColor: '#1e1e2e', color: '#666' },
+          '&': { height: '100%', fontSize: '14px', backgroundColor: 'transparent' },
+          '.cm-scroller': { overflow: 'auto', fontFamily: "'JetBrains Mono', 'SF Mono', 'Fira Code', monospace", padding: '8px 0' },
+          '.cm-content': { padding: '32px 24px', lineHeight: '1.85', caretColor: '#7f77dd' },
+          '.cm-gutters': { borderRight: '1px solid rgba(255,255,255,0.04)', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.15)' },
+          '.cm-activeLineGutter': { backgroundColor: 'rgba(127,119,221,0.06)' },
+          '.cm-activeLine': { backgroundColor: 'rgba(127,119,221,0.04)' },
+          '.cm-cursor': { borderLeftColor: '#a8a0f0' },
+          '.cm-selectionBackground': { backgroundColor: 'rgba(127,119,221,0.2) !important' },
+          '.cm-gutterElement': { paddingLeft: '14px', paddingRight: '8px' },
+        }),
+        EditorView.baseTheme({
+          '&.cm-editor.cm-focused': { outline: 'none' },
         }),
       ],
     }),
@@ -58,53 +66,78 @@ function setContent(text: string) {
   })
 }
 
-onBeforeUnmount(() => {
-  editorView?.destroy()
-})
-
+onBeforeUnmount(() => { editorView?.destroy() })
 defineExpose({ setContent })
 </script>
 
 <template>
-  <div class="editor-container">
-    <div class="editor-toolbar">
-      <span class="toolbar-hint">Markdown 编辑器</span>
-      <span class="toolbar-count">{{ store.markdown.length }} 字</span>
+  <div class="editor-wrap">
+    <div class="editor-header">
+      <div class="editor-status">
+        <span class="status-dot" />
+        <span class="status-label">Markdown</span>
+      </div>
+      <span class="char-count">{{ store.markdown.length.toLocaleString() }} chars</span>
     </div>
-    <div ref="editorContainer" class="editor-cm" />
+    <div ref="editorContainer" class="editor-body" />
+    <div class="editor-footer">
+      <span class="hint"># heading &middot; **bold** &middot; - list &middot; ```code```</span>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.editor-container {
+.editor-wrap {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #1e1e2e;
+  background: transparent;
 }
 
-.editor-toolbar {
+.editor-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 16px;
-  background: #282840;
-  border-bottom: 1px solid #333;
+  padding: 14px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   flex-shrink: 0;
 }
 
-.toolbar-hint {
-  font-size: 12px;
-  color: #888;
+.editor-status { display: flex; align-items: center; gap: 8px; }
+
+.status-dot {
+  width: 7px; height: 7px;
+  background: #7f77dd;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(127, 119, 221, 0.5);
 }
 
-.toolbar-count {
+.status-label {
   font-size: 12px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 400;
 }
 
-.editor-cm {
+.char-count {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.15);
+  font-variant-numeric: tabular-nums;
+}
+
+.editor-body {
   flex: 1;
   overflow: hidden;
+}
+
+.editor-footer {
+  padding: 10px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  flex-shrink: 0;
+}
+
+.hint {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.1);
+  letter-spacing: 0.3px;
 }
 </style>
