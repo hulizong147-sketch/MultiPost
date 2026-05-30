@@ -59,6 +59,9 @@ export class WeChatPublisher extends BasePublisher {
 
       let titleOk = false, bodyOk = false, saved = false
 
+      // 截图诊断
+      await page.screenshot({ path: path.join(os.homedir(), 'Desktop', 'wechat-debug.png') }).catch(() => {})
+
       // 3. 标题 — click → select all → type
       try {
         const t = page.locator('#title')
@@ -95,7 +98,7 @@ export class WeChatPublisher extends BasePublisher {
         } catch {}
       }
 
-      return { success: true, platform: PlatformType.WECHAT_MP, message: `标题[${titleOk?'✅':'❌'}] 正文[${bodyOk?'✅':'❌'}] 保存[${saved?'✅':'❌'}]` }
+      return { success: true, platform: PlatformType.WECHAT_MP, message: `标题[${titleOk?'✅':'❌'}] 正文[${bodyOk?'✅':'❌'}] 保存[${saved?'✅':'❌'}] | 截图:桌面/wechat-debug.png` }
     } catch (err: any) {
       return { success: false, platform: PlatformType.WECHAT_MP, message: `异常: ${err.message}` }
     }
