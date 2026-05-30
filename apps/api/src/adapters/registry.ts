@@ -4,6 +4,8 @@ import { WeChatAdapter } from './wechat.js'
 import { ZhihuAdapter } from './zhihu.js'
 import { XiaohongshuAdapter } from './xiaohongshu.js'
 import { BilibiliAdapter } from './bilibili.js'
+import { ToutiaoAdapter } from './toutiao.js'
+import { CSDNAdapter } from './csdn.js'
 
 class AdapterRegistry {
   private adapters = new Map<string, BasePlatformAdapter>()
@@ -32,3 +34,5 @@ adapterRegistry.register(new WeChatAdapter())
 adapterRegistry.register(new ZhihuAdapter())
 adapterRegistry.register(new XiaohongshuAdapter())
 adapterRegistry.register(new BilibiliAdapter())
+adapterRegistry.register(new ToutiaoAdapter())
+adapterRegistry.register(new CSDNAdapter())

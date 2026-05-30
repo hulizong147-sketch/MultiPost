@@ -15,6 +15,8 @@ const isWechat = computed(() => props.platform === PlatformType.WECHAT_MP)
 const isZhihu = computed(() => props.platform === PlatformType.ZHIHU)
 const isXhs = computed(() => props.platform === PlatformType.XIAOHONGSHU)
 const isBili = computed(() => props.platform === PlatformType.BILIBILI)
+const isToutiao = computed(() => props.platform === PlatformType.TOUTIAO)
+const isCsdn = computed(() => props.platform === PlatformType.CSDN)
 
 function copyContent() {
   if (!props.content) return
@@ -25,15 +27,35 @@ function copyContent() {
 async function doPublish() {
   if (!props.content) return
   publishing.value = true
-  await new Promise(r => setTimeout(r, 600))
-  store.simulatePublish(props.platform, props.content.title)
-  published.value = true; publishing.value = false
+
+  // CSDN 特殊处理：打开编辑器 + 复制 Markdown 原文
+  if (props.platform === PlatformType.CSDN) {
+    await navigator.clipboard.writeText(store.markdown)
+    window.open('https://editor.csdn.net/md?not_checkout=1', '_blank')
+    store.simulatePublish(props.platform, props.content.title)
+    store.simulatePublish(props.platform, props.content.title)
+    published.value = true
+    publishing.value = false
+    setTimeout(() => (published.value = false), 2500)
+    return
+  }
+
+  // 其他平台：尝试真实发布
+  try {
+    await store.realPublish(props.platform)
+    published.value = true
+  } catch {
+    await new Promise(r => setTimeout(r, 600))
+    store.simulatePublish(props.platform, props.content.title)
+    published.value = true
+  }
+  publishing.value = false
   setTimeout(() => (published.value = false), 2500)
 }
 </script>
 
 <template>
-  <div :class="['card', { wechat: isWechat, zhihu: isZhihu, xhs: isXhs, bili: isBili }]">
+  <div :class="['card', { wechat: isWechat, zhihu: isZhihu, xhs: isXhs, bili: isBili, toutiao: isToutiao, csdn: isCsdn }]">
     <!-- 统一顶栏 -->
     <div class="card-topbar">
       <span class="topbar-name">{{ config.name }}</span>
@@ -130,6 +152,41 @@ async function doPublish() {
           <div class="xhs-act"><span class="xhs-icon">&#8682;</span> {{ 80 + Math.floor(content.body.length / 10) }}</div>
           <div class="xhs-act"><span class="xhs-icon">&#9998;</span> 评论</div>
         </div>
+      </div>
+    </div>
+
+    <!-- 头条样式 -->
+    <div v-else-if="isToutiao" class="body-toutiao">
+      <div class="tt-head">
+        <div class="tt-source">
+          <span class="tt-logo">头条</span>
+          <span class="tt-username">{{ store.accounts.toutiao?.username || '未设置账号' }}</span>
+          <span class="tt-follow">+ 关注</span>
+        </div>
+      </div>
+      <h1 class="tt-heading">{{ content.title }}</h1>
+      <div class="tt-meta">
+        <span>{{ new Date().toLocaleDateString('zh-CN') }}</span>
+        <span>阅读 {{ 300 + content.body.length }}</span>
+        <span>评论 {{ Math.floor(content.body.length / 15) }}</span>
+      </div>
+      <div class="tt-body" v-html="content.body" />
+      <div v-if="content.tags.length" class="tt-tags">
+        <span v-for="t in content.tags" :key="t" class="tt-tag">#{{ t }}</span>
+      </div>
+    </div>
+
+    <!-- CSDN 样式 -->
+    <div v-else-if="isCsdn" class="body-csdn">
+      <h1 class="cs-heading">{{ content.title }}</h1>
+      <div class="cs-meta">
+        <span>{{ store.accounts.csdn?.username || '未设置账号' }}</span>
+        <span>{{ new Date().toLocaleDateString('zh-CN') }}</span>
+        <span>阅读 {{ 200 + content.body.length }}</span>
+      </div>
+      <div class="cs-body" v-html="content.body" />
+      <div v-if="content.tags.length" class="cs-tags">
+        <span v-for="t in content.tags" :key="t" class="cs-tag">{{ t }}</span>
       </div>
     </div>
 
@@ -267,4 +324,33 @@ async function doPublish() {
 .bi-body :deep(pre) { background: #1a1a2e; color: #e4e4ec; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12px; }
 .bi-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
 .bi-tag { padding: 4px 10px; background: #f6f7f8; border-radius: 6px; font-size: 12px; color: #9499a0; }
+
+/* ===== 头条样式 ===== */
+.body-toutiao { padding: 16px 18px; overflow-y: auto; flex: 1; background: #fff; color: #222; border-radius: 0 0 14px 14px; }
+.tt-head { margin-bottom: 12px; }
+.tt-source { display: flex; align-items: center; gap: 8px; }
+.tt-logo { padding: 2px 8px; background: #e84142; color: #fff; border-radius: 4px; font-size: 11px; font-weight: 700; }
+.tt-username { font-size: 13px; color: #666; }
+.tt-follow { padding: 2px 10px; border: 1px solid #e84142; border-radius: 12px; font-size: 11px; color: #e84142; cursor: pointer; }
+.tt-heading { font-size: 18px; font-weight: 700; line-height: 1.45; margin: 10px 0 8px; color: #222; }
+.tt-meta { display: flex; gap: 14px; font-size: 11px; color: #999; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+.tt-body { font-size: 14px; color: #333; line-height: 1.9; }
+.tt-body :deep(p) { margin-bottom: 14px; }
+.tt-body :deep(strong) { font-weight: 600; color: #1a1a1a; }
+.tt-body :deep(blockquote) { border-left: 3px solid #e84142; padding: 6px 14px; margin: 12px 0; color: #888; background: #fffafa; }
+.tt-body :deep(code) { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-size: 12px; color: #d14; }
+.tt-body :deep(pre) { background: #2d2d2d; color: #ccc; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+.tt-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.tt-tag { padding: 4px 10px; background: #fff5f5; border-radius: 4px; font-size: 11px; color: #e84142; }
+
+/* ===== CSDN 样式 ===== */
+.body-csdn { padding: 20px 18px; overflow-y: auto; flex: 1; background: #fff; color: #333; border-radius: 0 0 14px 14px; }
+.cs-heading { font-size: 22px; font-weight: 700; line-height: 1.4; margin: 0 0 10px; }
+.cs-meta { display: flex; gap: 14px; font-size: 12px; color: #999; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+.cs-body { font-size: 14px; color: #333; line-height: 1.9; }
+.cs-body :deep(p) { margin-bottom: 14px; }
+.cs-body :deep(code) { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-size: 13px; color: #c7254e; }
+.cs-body :deep(pre) { background: #2d2d2d; color: #ccc; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
+.cs-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.cs-tag { padding: 4px 10px; background: #fff8e1; border-radius: 4px; font-size: 11px; color: #e65100; }
 </style>

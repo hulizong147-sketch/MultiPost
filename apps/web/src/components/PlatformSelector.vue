@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { useEditorStore } from '../stores/editor'
 
 const store = useEditorStore()
+onMounted(() => store.loadPlatforms())
 </script>
 
 <template>
@@ -12,7 +14,7 @@ const store = useEditorStore()
       :class="['platform-btn', { active: store.selectedPlatforms.includes(p.type) }]"
       @click="store.togglePlatform(p.type)"
     >
-      {{ p.label }}
+      {{ p.name }}
     </button>
   </div>
 </template>

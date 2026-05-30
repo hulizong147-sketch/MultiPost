@@ -5,6 +5,7 @@ export enum PlatformType {
   XIAOHONGSHU = 'xiaohongshu',
   BILIBILI = 'bilibili',
   TOUTIAO = 'toutiao',
+  CSDN = 'csdn',
 }
 
 // 规范化内容（平台无关的中间表示）
@@ -43,6 +44,24 @@ export interface TransformRequest {
 // API 响应
 export interface TransformResponse {
   results: Record<string, PlatformContent>
+}
+
+// 平台元数据（供前端动态发现平台）
+export interface PlatformMeta {
+  type: PlatformType
+  name: string
+  description: string
+  docsUrl: string
+  titleMaxLength: number
+  bodyMaxLength: number | null
+  supportMarkdown: boolean
+  allowExternalLinks: boolean
+  hashtagMaxCount: number
+}
+
+// 平台列表 API 响应
+export interface PlatformListResponse {
+  platforms: PlatformMeta[]
 }
 
 // 平台约束常量
@@ -105,5 +124,15 @@ export const PLATFORM_CONSTRAINTS: Record<PlatformType, {
     supportMarkdown: false,
     allowExternalLinks: false,
     hashtagMaxCount: 3,
+  },
+  [PlatformType.CSDN]: {
+    name: 'CSDN',
+    titleMaxLength: 100,
+    bodyMaxLength: null,
+    summaryMaxLength: 200,
+    imageRatio: '16:9',
+    supportMarkdown: true,
+    allowExternalLinks: true,
+    hashtagMaxCount: 5,
   },
 }

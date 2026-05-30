@@ -1,24 +1,48 @@
 import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkGfm from 'remark-gfm'
+import remarkRehype from 'remark-rehype'
+import rehypeStringify from 'rehype-stringify'
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 import { visit } from 'unist-util-visit'
 import type { NormalizedContent, ImageAsset } from '@multipost/shared'
 
+// 扩展 sanitize schema，允许 class/id 属性（各平台适配器会进一步处理）
+const schema = {
+  ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    code: [...(defaultSchema.attributes?.code || []), 'className'],
+    pre: [...(defaultSchema.attributes?.pre || []), 'className'],
+    span: [...(defaultSchema.attributes?.span || []), 'className'],
+    div: [...(defaultSchema.attributes?.div || []), 'className'],
+    table: [...(defaultSchema.attributes?.table || []), 'className'],
+    th: [...(defaultSchema.attributes?.th || []), 'style'],
+    td: [...(defaultSchema.attributes?.td || []), 'style'],
+  },
+}
+
 /**
  * 将 Markdown 文本解析为平台无关的 NormalizedContent
+ * 使用 remark→rehype 管道生成语义化 HTML
  */
 export function normalize(markdown: string): NormalizedContent {
   const tree = unified().use(remarkParse).use(remarkGfm).parse(markdown)
 
-  // 提取纯文本（用于摘要）
+  // 提取元数据
   let plainText = ''
   const images: ImageAsset[] = []
   let title = ''
+  const headings: { level: number; text: string }[] = []
 
   visit(tree, (node: any) => {
-    // 提取标题
-    if (node.type === 'heading' && node.depth === 1 && !title) {
-      title = extractText(node)
+    // 提取所有标题（用于生成目录结构）
+    if (node.type === 'heading') {
+      const text = extractText(node)
+      headings.push({ level: node.depth, text })
+      if (node.depth === 1 && !title) {
+        title = text
+      }
     }
 
     // 提取图片
@@ -29,8 +53,10 @@ export function normalize(markdown: string): NormalizedContent {
       })
     }
 
-    // 收集纯文本（用于摘要和校验）
+    // 收集纯文本
     if (node.type === 'text') {
+      plainText += node.value + ' '
+    } else if (node.type === 'code') {
       plainText += node.value + ' '
     }
   })
@@ -44,8 +70,8 @@ export function normalize(markdown: string): NormalizedContent {
   // 生成摘要（前 200 字）
   const summary = plainText.trim().slice(0, 200)
 
-  // 生成 HTML（用于富文本平台预览）
-  let bodyHtml = markdownToSimpleHtml(markdown)
+  // 使用 remark-rehype 生成高质量语义化 HTML
+  const bodyHtml = markdownToHtml(markdown)
 
   return {
     title: title.trim(),
@@ -57,6 +83,26 @@ export function normalize(markdown: string): NormalizedContent {
   }
 }
 
+/**
+ * 使用 remark→rehype 管道生成语义化 HTML
+ * 相比之前的简陋正则替换，这套管道：
+ * 1. 正确处理嵌套格式（粗体+斜体+链接等组合）
+ * 2. 代码块自动标注语言 class（language-xxx）
+ * 3. 表格生成完整 <table>/<thead>/<tbody> 结构
+ * 4. 自动转义 HTML 实体
+ */
+function markdownToHtml(md: string): string {
+  const result = unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkRehype, { allowDangerousHtml: false })
+    .use(rehypeSanitize, schema)
+    .use(rehypeStringify)
+    .processSync(md)
+
+  return String(result)
+}
+
 function extractText(node: any): string {
   let text = ''
   visit(node, (child: any) => {
@@ -65,36 +111,4 @@ function extractText(node: any): string {
     }
   })
   return text
-}
-
-/**
- * 简易 Markdown → HTML 转换（不使用 remark-rehype 以避免重量依赖）
- * 供预览使用，后续各适配器可覆写
- */
-function markdownToSimpleHtml(md: string): string {
-  let html = md
-    // base64 大图 → 占位标记
-    .replace(/!\[([^\]]*)\]\(data:image\/[^)]{200,}\)/g, '<div class="img-placeholder">&#128247; $1（本地图片）</div>')
-    // 标题
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    // 粗体/斜体
-    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // 行内代码
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    // 链接
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-    // 图片
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />')
-    // 无序列表
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    // 段落（连续的纯文本行）
-    .replace(/^(?!<[hl]|<li|<img|<a|<code)(.+)$/gm, '<p>$1</p>')
-    // 换行
-    .replace(/\n\n/g, '<br/>')
-
-  return html
 }
