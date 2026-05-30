@@ -8,6 +8,20 @@ import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { useEditorStore } from '../stores/editor'
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.readAsDataURL(file)
+  })
+}
+
+async function handleImageInsert(view: EditorView, file: File) {
+  const url = await fileToBase64(file)
+  const mdImg = `\n![${file.name}](${url})\n`
+  view.dispatch(view.state.replaceSelection(mdImg))
+}
+
 const store = useEditorStore()
 const editorContainer = ref<HTMLDivElement>()
 let editorView: EditorView | null = null
@@ -31,6 +45,35 @@ onMounted(() => {
       extensions: [
         history(),
         markdown({ base: markdownLanguage, codeLanguages: languages }),
+        EditorView.domEventHandlers({
+          paste(event, view) {
+            const items = event.clipboardData?.items
+            if (items) {
+              for (const item of items) {
+                if (item.type.startsWith('image/')) {
+                  event.preventDefault()
+                  const file = item.getAsFile()
+                  if (file) handleImageInsert(view, file)
+                  return true
+                }
+              }
+            }
+            return false
+          },
+          drop(event, view) {
+            const files = event.dataTransfer?.files
+            if (files?.length) {
+              for (const file of files) {
+                if (file.type.startsWith('image/')) {
+                  event.preventDefault()
+                  handleImageInsert(view, file)
+                  return true
+                }
+              }
+            }
+            return false
+          },
+        }),
         oneDark,
         lineNumbers(),
         placeholder('Start writing...'),
