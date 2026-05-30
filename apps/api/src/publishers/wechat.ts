@@ -15,7 +15,7 @@ const UDD = path.join(os.homedir(), '.multipost', 'chrome-wechat')
 // DOM 选择器 — F12 实测
 const SEL = {
   newArticle: '#app > div.main_bd_new > div:nth-child(3) > div.weui-desktop-panel__bd > div > div:nth-child(2)',
-  title: '#js_title_main div',
+  title: '#js_title_main > div > div > div > div',
   author: '#author',
   bodyFrame: '#ueditor_0',
   save: '#js_submit > button',
@@ -56,59 +56,71 @@ export class WeChatPublisher extends BasePublisher {
         const btn = page.locator(SEL.newArticle)
         await btn.waitFor({ timeout: 10000 })
         await btn.click()
-        await page.waitForTimeout(5000)
+        await page.waitForTimeout(8000)  // 编辑器加载需要时间
         inEditor = true
       } catch {
-        // 兜底：直接跳 URL
         await page.goto(
           'https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=10&lang=zh_CN',
           { waitUntil: 'networkidle', timeout: 20000 }
         )
-        await page.waitForTimeout(5000)
+        await page.waitForTimeout(8000)
         inEditor = !page.url().includes('login')
       }
 
+      // 再等一会确保 React 组件和 iframe 完全渲染
+      await page.waitForTimeout(3000)
+
       // 5. 填入标题
+      let titleOk = false
       try {
         const el = page.locator(SEL.title).first()
-        await el.waitFor({ timeout: 8000 })
+        await el.waitFor({ timeout: 10000 })
         await el.click()
-        await page.keyboard.press('Control+a')
-        await page.waitForTimeout(200)
-        await el.type(content.title, { delay: 10 })
-      } catch {}
+        await el.fill(content.title)
+        titleOk = true
+        await page.waitForTimeout(500)
+      } catch (e: any) { console.log('标题失败:', e.message) }
 
       // 6. 填入正文 — 公众号正文在 #ueditor_0 iframe 内
+      let bodyOk = false
       try {
         const fh = page.locator(SEL.bodyFrame)
-        await fh.waitFor({ timeout: 8000 })
+        await fh.waitFor({ timeout: 10000 })
+        // 等 iframe 完全加载
+        await page.waitForTimeout(2000)
         const frame = await fh.contentFrame()
         if (frame) {
           const area = frame.locator('[contenteditable="true"], body').first()
           await area.waitFor({ timeout: 5000 })
           await area.click()
-          await frame.keyboard.press('Control+a')
-          await frame.waitForTimeout(300)
           await area.type(content.body, { delay: 2 })
+          bodyOk = true
         }
-      } catch {}
+      } catch (e: any) { console.log('正文失败:', e.message) }
 
-      // 7. 填入作者（公众号默认作者是公众号名，可选覆盖）
+      // 7. 填入作者
+      let authorOk = false
       try {
         const ael = page.locator(SEL.author)
-        await ael.waitFor({ timeout: 3000 })
+        await ael.waitFor({ timeout: 5000 })
         await ael.fill(content.title.slice(0, 8))
-      } catch {}
+        authorOk = true
+      } catch (e: any) { console.log('作者失败:', e.message) }
 
       // 8. 保存
+      let saved = false
       try {
         const sbtn = page.locator(SEL.save)
         await sbtn.waitFor({ timeout: 5000 })
         await sbtn.click()
         await page.waitForTimeout(2000)
-      } catch {}
+        saved = true
+      } catch (e: any) { console.log('保存失败:', e.message) }
 
-      return { success: true, platform: PlatformType.WECHAT_MP, message: '公众号操作完成，请检查浏览器' }
+      return {
+        success: true, platform: PlatformType.WECHAT_MP,
+        message: `标题:${titleOk ? '✅' : '❌'} 正文:${bodyOk ? '✅' : '❌'} 作者:${authorOk ? '✅' : '❌'} 保存:${saved ? '✅' : '❌'}，请检查浏览器`,
+      }
     } catch (err: any) {
       return { success: false, platform: PlatformType.WECHAT_MP, message: `异常: ${err.message}` }
     }
