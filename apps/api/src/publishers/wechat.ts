@@ -1,10 +1,8 @@
 /**
  * 微信公众号 Publisher — Playwright 全自动发布
  *
- * 公众号后台: https://mp.weixin.qq.com/
- *
- * 公众号编辑器复杂：不是标准 textarea，是类 Word 富文本编辑器。
- * 策略：导航到编辑器 → 检测登录 → 等待用户扫码 → 填入内容 → 保存
+ * 策略：打开编辑器 → 如果需要登录等用户扫码 → 填入 → 保存
+ * 失败时保持浏览器打开，用户可手动完成。
  */
 import { PlatformType } from '@multipost/shared'
 import type { PlatformContent } from '@multipost/shared'
@@ -14,7 +12,6 @@ import { BasePublisher, type PublishResult } from './base.js'
 
 const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
 const USER_DATA_DIR = path.join(os.homedir(), '.multipost', 'chrome-wechat')
-const DASHBOARD = 'https://mp.weixin.qq.com/'
 const EDITOR_URL = 'https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=10&lang=zh_CN'
 
 export class WeChatPublisher extends BasePublisher {
@@ -30,43 +27,40 @@ export class WeChatPublisher extends BasePublisher {
         executablePath: CHROME_PATH,
         viewport: { width: 1280, height: 900 },
       })
-      const page = await browser.newPage()
 
-      // 1. 导航到公众号后台
-      await page.goto(DASHBOARD, { waitUntil: 'domcontentloaded', timeout: 30000 })
-      // 等页面稳定（OAuth 跳转完成）
-      await page.waitForTimeout(5000)
+      // 使用 launcher 已创建的 page，不再 newPage()
+      const pages = browser.pages()
+      const page = pages[0]
 
-      // 2. 检测是否在登录页 — 温和等待，不立即判断失败
-      let needLogin = false
-      try {
-        needLogin = page.url().includes('login') || page.url().includes('qrconnect')
-      } catch { needLogin = true }
-
-      if (needLogin) {
-        console.log('🔄 请在浏览器中扫码登录公众号（浏览器窗口保持打开，你有充足时间扫码）')
-        // 等 login 关键词消失，给 OAuth 跳转留 30 秒缓冲
-        const loggedIn = await this.waitForLogin(page, ['login', 'qrconnect'], 60)
-        if (!loggedIn) {
-          // 不立即失败，可能是 Cookie 已生效但 URL 未变
-          console.log('⚠️  URL 检测超时，尝试继续...')
-        }
-      }
-
-      // 3. 导航到编辑器
+      // 1. 直接导航到编辑器
       await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 30000 })
-      await page.waitForTimeout(5000)
+      await page.waitForTimeout(3000)
 
-      // 4. 二次确认：如果又被重定向到登录页
-      if (page.url().includes('login') || page.url().includes('qrconnect')) {
-        await browser.close()
-        return { success: false, platform: PlatformType.WECHAT_MP, message: '公众号登录未完成，请确认扫码后重试' }
+      // 2. 如果被重定向到登录页，等待用户扫码
+      const needsLogin = page.url().includes('login') || page.url().includes('qrconnect')
+      if (needsLogin) {
+        console.log('🔄 请在浏览器中扫码登录公众号')
+        // 一直等到 login 相关关键词消失（最多等 3 分钟，已含 60s 缓冲）
+        const ok = await this.waitForLogin(page, ['login', 'qrconnect'], 60)
+        if (!ok) {
+          // 超时了但浏览器保持打开
+          return { success: false, platform: PlatformType.WECHAT_MP, message: '扫码登录超时，请关闭浏览器后重试' }
+        }
+        // 登录成功，重新导航到编辑器
+        console.log('✅ 登录检测成功，跳转编辑器...')
+        await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 30000 })
+        await page.waitForTimeout(4000)
       }
 
-      // 5. 填入标题
-      const titleSels = ['#title', 'input[placeholder*="标题"]', '.editor_title input', '[id*="title"]']
+      // 3. 确认已到达编辑器
+      if (page.url().includes('login') || page.url().includes('qrconnect')) {
+        // 保留浏览器，不做二次关闭
+        return { success: false, platform: PlatformType.WECHAT_MP, message: '登录未生效，请确认扫码成功后重试' }
+      }
+
+      // 4. 填入标题
       let titleOk = false
-      for (const sel of titleSels) {
+      for (const sel of ['#title', 'input[placeholder*="标题"]', '[id*="title"] input', '#title_textarea']) {
         try {
           const el = page.locator(sel).first()
           await el.waitFor({ timeout: 5000 })
@@ -76,15 +70,10 @@ export class WeChatPublisher extends BasePublisher {
           break
         } catch { continue }
       }
-      if (!titleOk) {
-        await browser.close()
-        return { success: false, platform: PlatformType.WECHAT_MP, message: '未找到标题输入框。请确认已登录公众号后台' }
-      }
 
-      // 6. 填入正文
-      const bodySels = ['#ueditor_0', '[contenteditable="true"]', '.rich_media_content']
+      // 5. 填入正文
       let bodyOk = false
-      for (const sel of bodySels) {
+      for (const sel of ['#ueditor_0', '[contenteditable="true"]', '.rich_media_content']) {
         try {
           const el = page.locator(sel).first()
           await el.waitFor({ timeout: 5000 })
@@ -94,34 +83,38 @@ export class WeChatPublisher extends BasePublisher {
           break
         } catch { continue }
       }
-      if (!bodyOk) {
-        await browser.close()
-        return { success: false, platform: PlatformType.WECHAT_MP, message: '未找到正文编辑区，公众号页面结构可能已变更' }
+
+      // 6. 点保存
+      let saved = false
+      if (titleOk && bodyOk) {
+        for (const sel of ['button:has-text("保存")', '.js_submit', '#js_save', '[id*="save"]']) {
+          try {
+            const btn = page.locator(sel).first()
+            await btn.waitFor({ timeout: 5000 })
+            await btn.click()
+            saved = true
+            break
+          } catch { continue }
+        }
+        await page.waitForTimeout(2000)
       }
 
-      await page.waitForTimeout(1000)
-
-      // 7. 保存
-      const saveBtn = page.locator('button:has-text("保存"), .js_submit, #js_save, [id*="save"]').first()
-      try {
-        await saveBtn.waitFor({ timeout: 8000 })
-        await saveBtn.click()
-        await page.waitForTimeout(3000)
-      } catch {
-        // 保存按钮可能不叫"保存"
-        console.log('⚠️  未找到保存按钮，请手动保存')
+      // 浏览器保持打开让用户确认
+      if (titleOk && bodyOk && saved) {
+        return { success: true, platform: PlatformType.WECHAT_MP, message: '公众号图文已保存！请在浏览器中确认并预览/群发' }
       }
-
-      await browser.close()
-
+      if (titleOk && bodyOk) {
+        return { success: true, platform: PlatformType.WECHAT_MP, message: '内容已填入，请在浏览器中手动点击保存' }
+      }
       return {
-        success: true,
+        success: false,
         platform: PlatformType.WECHAT_MP,
-        message: '公众号图文已保存，请到后台确认并群发',
+        message: `部分填入失败（标题:${titleOk ? '✅' : '❌'} 正文:${bodyOk ? '✅' : '❌'}），请手动完成`,
       }
+
     } catch (err: any) {
       if (browser) try { await browser.close() } catch {}
-      return { success: false, platform: PlatformType.WECHAT_MP, message: `公众号发布异常: ${err.message}` }
+      return { success: false, platform: PlatformType.WECHAT_MP, message: `公众号异常: ${err.message}` }
     }
   }
 }

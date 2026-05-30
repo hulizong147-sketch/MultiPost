@@ -23,7 +23,7 @@ export class CSDNPublisher extends BasePublisher {
         viewport: { width: 1280, height: 900 },
       })
 
-      const page = await browser.newPage()
+      const page = browser.pages()[0]
 
       // 1. 打开 CSDN Markdown 编辑器
       await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 20000 })
@@ -104,7 +104,7 @@ export class CSDNPublisher extends BasePublisher {
       executablePath: CHROME_PATH,
       viewport: { width: 1280, height: 900 },
     })
-    await browser.newPage()
+    await browser.pages()[0]
     console.log('CSDN 登录窗口已打开，请在 Chrome 中完成登录')
   }
 }

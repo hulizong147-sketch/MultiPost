@@ -29,7 +29,7 @@ export class BilibiliPublisher extends BasePublisher {
         executablePath: CHROME_PATH,
         viewport: { width: 1280, height: 900 },
       })
-      const page = await browser.newPage()
+      const page = browser.pages()[0]
 
       // 1. 打开 B站专栏编辑器
       await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 20000 })

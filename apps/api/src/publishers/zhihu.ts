@@ -27,7 +27,7 @@ export class ZhihuPublisher extends BasePublisher {
         executablePath: CHROME_PATH,
         viewport: { width: 1280, height: 900 },
       })
-      const page = await browser.newPage()
+      const page = browser.pages()[0]
 
       await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 20000 })
       await page.waitForTimeout(3000)
