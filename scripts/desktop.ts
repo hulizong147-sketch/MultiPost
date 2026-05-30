@@ -38,5 +38,5 @@ run('Web', 'pnpm', ['--filter', '@multipost/web', 'dev'],
 // 3. 等 8 秒让前后端启动，然后启动 Electron
 setTimeout(() => {
   console.log('\n🖥️  启动 Electron 桌面窗口...\n')
-  run('Desktop', 'pnpm', ['--filter', '@multipost/electron', 'exec', 'electron', 'apps/electron/main.js'])
+  run('Desktop', 'pnpm', ['--filter', '@multipost/electron', 'exec', 'electron', '.'])
 }, 8000)
