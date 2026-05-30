@@ -63,13 +63,24 @@ export class WeChatPublisher extends BasePublisher {
 
       let titleOk = false, bodyOk = false, saved = false
 
-      // 3. 标题 — 粘贴法（React 拦不住 Ctrl+V）
+      // 3. 标题 — 终极方案：focus + 全选 + insertText + input事件
       try {
-        await page.evaluate((text: string) => navigator.clipboard.writeText(text), content.title)
-        await page.locator('#title').click({ timeout: 5000 })
-        await page.waitForTimeout(300)
-        await page.keyboard.press('Control+a')
-        await page.keyboard.press('Control+v')
+        // 确保元素存在
+        await page.locator('#title').waitFor({ state: 'visible', timeout: 10000 })
+        // JS 层面操作
+        await page.evaluate((text: string) => {
+          const el = document.querySelector('#title') as HTMLTextAreaElement
+          if (!el) return
+          el.focus()
+          el.select()
+          // 用 InputEvent 模拟粘贴（React 监听的）
+          const dataTransfer = new DataTransfer()
+          dataTransfer.setData('text/plain', text)
+          el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dataTransfer, bubbles: true }))
+          // 同时触发 input 和 change
+          el.dispatchEvent(new Event('input', { bubbles: true }))
+          el.dispatchEvent(new Event('change', { bubbles: true }))
+        }, content.title)
         await page.waitForTimeout(500)
         titleOk = await page.locator('#title').inputValue().then(v => v.length > 0).catch(() => false)
       } catch {}
