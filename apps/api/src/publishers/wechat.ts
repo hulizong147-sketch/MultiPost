@@ -63,10 +63,14 @@ export class WeChatPublisher extends BasePublisher {
       await page.waitForTimeout(3000)
 
       // === 标题 — 自动尝试多种策略 ===
+      // 滚动标题到可见区域
+      await page.evaluate(() => document.querySelector('#title')?.scrollIntoView({ block: 'center' }))
+      await page.waitForTimeout(300)
+
       let titleOk = false
       const strategies = [
         { name: 'click+type', fn: async () => {
-          await page.locator('textarea#title').click({ timeout: 5000 })
+          await page.locator('#title').click({ force: true, timeout: 3000 })
           await page.keyboard.press('Control+a')
           await page.keyboard.type(content.title, { delay: 10 })
           await page.waitForTimeout(500)
@@ -78,11 +82,11 @@ export class WeChatPublisher extends BasePublisher {
           await page.waitForTimeout(500)
         }},
         { name: 'fill', fn: async () => {
-          await page.locator('#title').fill(content.title, { timeout: 5000 })
+          await page.locator('#title').fill(content.title, { force: true, timeout: 3000 })
           await page.waitForTimeout(500)
         }},
         { name: 'click+insertText', fn: async () => {
-          await page.locator('textarea#title').click({ timeout: 5000 })
+          await page.locator('#title').click({ force: true, timeout: 3000 })
           await page.evaluate((t: string) => {
             const el = document.querySelector('#title') as HTMLTextAreaElement
             if (el) { el.focus(); el.select(); document.execCommand('insertText', false, t) }
