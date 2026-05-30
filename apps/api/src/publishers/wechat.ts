@@ -67,13 +67,31 @@ export class WeChatPublisher extends BasePublisher {
         inEditor = !page.url().includes('login')
       }
 
-      // 再等一会确保 React 组件和 iframe 完全渲染
-      // 再等一会确保组件渲染
-      await page.waitForTimeout(3000)
+      // 等编辑器完全渲染
+      await page.waitForTimeout(5000)
+
+      // ====== DOM 诊断（测试完就删） ======
+      const domReport = await page.evaluate(() => {
+        const report: string[] = []
+        const inputs = document.querySelectorAll('input, textarea, [contenteditable="true"]')
+        for (const el of inputs) {
+          const id = (el as HTMLElement).id || '(无id)'
+          const tag = (el as HTMLElement).tagName.toLowerCase()
+          const ph = ((el as any).placeholder || '').slice(0, 15)
+          const tp = (el as HTMLInputElement).type || ''
+          report.push(`${tag}#${id}[ph:${ph}][t:${tp}]`)
+        }
+        const frames = document.querySelectorAll('iframe')
+        for (const f of frames) {
+          report.push(`iframe#${f.id || '(无id)'}`)
+        }
+        return report.join(' | ') || '(未找到可编辑元素)'
+      })
+
+      // ====== 以下是填内容 ======
 
       // 5. 用 JS 直接注入内容 — 不依赖 Playwright 选择器等待
       let titleOk = false, bodyOk = false, authorOk = false, saved = false
-      let titleErr = '', bodyErr = '', authorErr = '', saveErr = ''
 
       await page.evaluate((data: any) => {
         // 标题：找 #js_title_main 下的可编辑元素
@@ -136,13 +154,9 @@ export class WeChatPublisher extends BasePublisher {
         await sbtn.click()
         await page.waitForTimeout(2000)
         saved = true
-      } catch (e: any) { saveErr = e.message?.split('\n')[0] || '' }
+      } catch (e: any) { }
 
-      let msg = `标题:${titleOk ? '✅' : '❌'} 正文:${bodyOk ? '✅' : '❌'} 作者:${authorOk ? '✅' : '❌'} 保存:${saved ? '✅' : '❌'}`
-      if (!titleOk) msg += ` | 标题:${titleErr}`
-      if (!bodyOk) msg += ` | 正文:${bodyErr}`
-      if (!authorOk) msg += ` | 作者:${authorErr}`
-      if (!saved) msg += ` | 保存:${saveErr}`
+      let msg = `${domReport} | 标题:${titleOk ? '✅' : '❌'} 正文:${bodyOk ? '✅' : '❌'} 作者:${authorOk ? '✅' : '❌'} 保存:${saved ? '✅' : '❌'}`
       msg += '。请检查浏览器'
       return { success: true, platform: PlatformType.WECHAT_MP, message: msg }
     } catch (err: any) {
