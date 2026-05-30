@@ -63,28 +63,23 @@ export class WeChatPublisher extends BasePublisher {
 
       let titleOk = false, bodyOk = false, saved = false
 
-      // 3. 标题 — 终极方案：focus + 全选 + insertText + input事件
+      // 3. 标题 — 键盘逐字输入（React 唯一接受的方式）
       try {
-        // 确保元素存在
-        await page.locator('#title').waitFor({ state: 'visible', timeout: 10000 })
-        // JS 层面操作
-        await page.evaluate((text: string) => {
-          const el = document.querySelector('#title') as HTMLTextAreaElement
-          if (!el) return
-          el.focus()
-          el.select()
-          // 用 InputEvent 模拟粘贴（React 监听的）
-          const dataTransfer = new DataTransfer()
-          dataTransfer.setData('text/plain', text)
-          el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dataTransfer, bubbles: true }))
-          // 同时触发 input 和 change
-          el.dispatchEvent(new Event('input', { bubbles: true }))
-          el.dispatchEvent(new Event('change', { bubbles: true }))
-        }, content.title)
+        // 点击 textarea 本身（不是外层 div）
+        await page.locator('textarea#title').click({ timeout: 5000 })
         await page.waitForTimeout(500)
-        titleOk = await page.locator('#title').inputValue().then(v => v.length > 0).catch(() => false)
+        // 确认焦点
+        const focusedId = await page.evaluate(() => document.activeElement?.id || 'none')
+        if (focusedId === 'title') {
+          await page.keyboard.press('Control+a')
+          await page.keyboard.type(content.title, { delay: 10 })
+          await page.waitForTimeout(500)
+          titleOk = (await page.locator('#title').inputValue().catch(() => ''))!.length > 0
+        } else {
+          await page.evaluate((f: string) => { (window as any).__wb_debug = 'focus=' + f }, focusedId)
+        }
       } catch {}
-
+      
       // 4. 正文 — innerHTML（公众号适配器输出 HTML，不是纯文本）
       try {
         await page.evaluate((html: string) => {
