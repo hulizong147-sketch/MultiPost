@@ -63,44 +63,44 @@ export class WeChatPublisher extends BasePublisher {
       await page.waitForTimeout(3000)
 
       // === 标题 — 自动尝试多种策略 ===
-      // 滚动标题到可见区域
-      await page.evaluate(() => document.querySelector('#title')?.scrollIntoView({ block: 'center' }))
-      await page.waitForTimeout(300)
+      // 滚动标题到可见区域 + 用 JS 强制点击
+      await page.evaluate(() => {
+        const el = document.querySelector('#title') as HTMLElement
+        if (el) {
+          el.scrollIntoView({ block: 'center' })
+          el.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+          el.focus()
+        }
+      })
+      await page.waitForTimeout(500)
 
       let titleOk = false
       const strategies = [
-        { name: 'click+type', fn: async () => {
-          await page.locator('#title').click({ force: true, timeout: 3000 })
+        { name: 'keyboard.type', fn: async () => {
           await page.keyboard.press('Control+a')
           await page.keyboard.type(content.title, { delay: 10 })
           await page.waitForTimeout(500)
         }},
-        { name: 'focus+type', fn: async () => {
-          await page.evaluate(() => (document.querySelector('#title') as HTMLElement)?.focus())
-          await page.waitForTimeout(300)
-          await page.keyboard.type(content.title, { delay: 10 })
+        { name: 'evaluate.dispatch.click', fn: async () => {
+          await page.evaluate((t: string) => {
+            const el = document.querySelector('#title') as HTMLTextAreaElement
+            if (!el) return
+            el.focus()
+            el.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+            const s = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+            s.call(el, t)
+            el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: t }))
+          }, content.title)
           await page.waitForTimeout(500)
         }},
         { name: 'fill', fn: async () => {
           await page.locator('#title').fill(content.title, { force: true, timeout: 3000 })
           await page.waitForTimeout(500)
         }},
-        { name: 'click+insertText', fn: async () => {
-          await page.locator('#title').click({ force: true, timeout: 3000 })
+        { name: 'execCommand.insertText', fn: async () => {
           await page.evaluate((t: string) => {
             const el = document.querySelector('#title') as HTMLTextAreaElement
             if (el) { el.focus(); el.select(); document.execCommand('insertText', false, t) }
-          }, content.title)
-          await page.waitForTimeout(500)
-        }},
-        { name: 'nativeSetter+InputEvent', fn: async () => {
-          await page.evaluate((t: string) => {
-            const el = document.querySelector('#title') as HTMLTextAreaElement
-            if (!el) return
-            el.focus()
-            const s = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
-            s.call(el, t)
-            el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: t }))
           }, content.title)
           await page.waitForTimeout(500)
         }},
