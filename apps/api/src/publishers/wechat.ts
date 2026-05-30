@@ -11,6 +11,7 @@ import { PlatformType } from '@multipost/shared'
 import type { PlatformContent } from '@multipost/shared'
 import path from 'path'
 import os from 'os'
+import fs from 'fs'
 import { BasePublisher, type PublishResult } from './base.js'
 
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
@@ -40,9 +41,9 @@ export class WeChatPublisher extends BasePublisher {
       await page.waitForTimeout(2000)
 
       if (page.url().includes('login') || page.url().includes('qrconnect')) {
-        const ok = await this.waitForLogin(page, ['login', 'qrconnect'], 60)
+        const ok = await this.waitForLogin(page, ['login', 'qrconnect'], 30)
         if (!ok) return { success: false, platform: PlatformType.WECHAT_MP, message: '登录超时' }
-        await page.waitForTimeout(3000)
+        await page.waitForTimeout(2000)
       }
 
       // 2. 点击「文章」进编辑器
@@ -104,7 +105,11 @@ export class WeChatPublisher extends BasePublisher {
         } catch {}
       }
 
-      return { success: true, platform: PlatformType.WECHAT_MP, message: `${debug ? 'DBG:' + debug + ' | ' : ''}标题[${titleOk?'✅':'❌'}] 正文[${bodyOk?'✅':'❌'}] 保存[${saved?'✅':'❌'}]` }
+      // 结果写入桌面文件（避免超时看不到）
+      const msg = `${debug ? 'DBG:' + debug + ' ' : ''}标题[${titleOk?'OK':'NO'}] 正文[${bodyOk?'OK':'NO'}] 保存[${saved?'OK':'NO'}]`
+      fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'publish-result.txt'), msg, 'utf-8')
+
+      return { success: true, platform: PlatformType.WECHAT_MP, message: msg }
     } catch (err: any) {
       return { success: false, platform: PlatformType.WECHAT_MP, message: `异常: ${err.message}` }
     }
