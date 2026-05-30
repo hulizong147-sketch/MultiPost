@@ -18,28 +18,12 @@ const store = useEditorStore()
 </template>
 
 <style scoped>
-.selector {
-  display: flex;
-  gap: 8px;
-}
-
+.selector { display: flex; gap: 6px; }
 .platform-btn {
-  padding: 6px 16px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  background: #fff;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
+  padding: 6px 14px; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px;
+  background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.35);
+  font-size: 12px; cursor: pointer; transition: all 0.25s; font-family: 'Inter', sans-serif;
 }
-
-.platform-btn:hover {
-  border-color: #1a1a2e;
-}
-
-.platform-btn.active {
-  background: #1a1a2e;
-  color: #fff;
-  border-color: #1a1a2e;
-}
+.platform-btn:hover { border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); }
+.platform-btn.active { background: rgba(127,119,221,0.15); border-color: rgba(127,119,221,0.3); color: #c4bef8; }
 </style>
