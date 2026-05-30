@@ -63,12 +63,14 @@ export class WeChatPublisher extends BasePublisher {
 
       let titleOk = false, bodyOk = false, saved = false
 
-      // 3. 标题 — execCommand insertText（标题是纯文本 ✓）
+      // 3. 标题 — 粘贴法（React 拦不住 Ctrl+V）
       try {
+        await page.evaluate((text: string) => navigator.clipboard.writeText(text), content.title)
         await page.locator('#title').click({ timeout: 5000 })
-        await page.keyboard.press('Control+a')
-        await page.keyboard.type(content.title, { delay: 5 })
         await page.waitForTimeout(300)
+        await page.keyboard.press('Control+a')
+        await page.keyboard.press('Control+v')
+        await page.waitForTimeout(500)
         titleOk = await page.locator('#title').inputValue().then(v => v.length > 0).catch(() => false)
       } catch {}
 
