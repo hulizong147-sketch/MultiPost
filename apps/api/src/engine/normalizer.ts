@@ -73,6 +73,8 @@ function extractText(node: any): string {
  */
 function markdownToSimpleHtml(md: string): string {
   let html = md
+    // 跳过 base64 大图：替换为占位符
+    .replace(/!\[([^\]]*)\]\(data:image\/[^)]{200,}\)/g, '<img src="#" alt="$1 (图片已省略)" />')
     // 标题
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
