@@ -59,42 +59,59 @@ export class WeChatPublisher extends BasePublisher {
 
       let titleOk = false, bodyOk = false, saved = false
 
-      // 3. 标题 — focus → type → blur (React 受控组件需要完整事件链)
-      try {
-        await page.evaluate((text: string) => {
-          const el = document.querySelector('#title') as HTMLTextAreaElement
-          if (el) {
-            el.focus()
-            el.value = text
-            el.dispatchEvent(new Event('input', { bubbles: true }))
-            el.dispatchEvent(new Event('change', { bubbles: true }))
-            el.blur()
-          }
-        }, content.title)
-        await page.waitForTimeout(500)
-        titleOk = await page.locator('#title').inputValue().then(v => v.length > 0).catch(() => false)
-      } catch {}
-
-      // 4. 正文 — iframe 内 focus → type → blur
-      try {
-        const frame = await page.locator('iframe').first().contentFrame({ timeout: 5000 })
-        if (frame) {
-          await frame.evaluate((text: string) => {
-            const el = document.querySelector('[contenteditable="true"]') as HTMLElement
-            if (el) {
-              el.focus()
-              el.innerText = text
-              el.dispatchEvent(new Event('input', { bubbles: true }))
-              el.blur()
-            }
-          }, content.body)
-          await page.waitForTimeout(500)
-          bodyOk = await frame.locator('[contenteditable="true"]').innerText().then(t => t.length > 10).catch(() => false)
+      // 3. 标题 — 原生 value setter 绕过 React 劫持
+      await page.evaluate((text: string) => {
+        const el = document.querySelector('#title')
+        if (el) {
+          const setter = Object.getOwnPropertyDescriptor(
+            window.HTMLTextAreaElement.prototype, 'value'
+          )!.set!
+          setter.call(el, text)
+          el.dispatchEvent(new Event('input', { bubbles: true }))
+          el.dispatchEvent(new Event('change', { bubbles: true }))
         }
-      } catch {}
+      }, content.title)
+      await page.waitForTimeout(300)
 
-      // 5. 作者（可选，不影响主流程）
-      try { await page.locator('#author').fill(content.title.slice(0, 8), { timeout: 3000 }) } catch {}
+      // 4. 正文 — 原生 innerText setter
+      await page.evaluate((text: string) => {
+        const f = document.querySelector('iframe') as HTMLIFrameElement | null
+        const el = f?.contentDocument?.querySelector('[contenteditable="true"]') as HTMLElement | null
+        if (el) {
+          el.focus()
+          const setter = Object.getOwnPropertyDescriptor(
+            window.HTMLElement.prototype, 'innerText'
+          )!.set!
+          setter.call(el, text)
+          el.dispatchEvent(new Event('input', { bubbles: true }))
+          el.blur()
+        }
+      }, content.body)
+      await page.waitForTimeout(300)
+
+      // 5. 作者
+      await page.evaluate((text: string) => {
+        const el = document.querySelector('#author') as HTMLInputElement | null
+        if (el) {
+          const setter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype, 'value'
+          )!.set!
+          setter.call(el, text)
+          el.dispatchEvent(new Event('input', { bubbles: true }))
+        }
+      }, content.title.slice(0, 8))
+      await page.waitForTimeout(300)
+
+      // 验证
+      titleOk = await page.evaluate(() => {
+        const el = document.querySelector('#title') as HTMLTextAreaElement | null
+        return el ? el.value.length > 0 : false
+      })
+      bodyOk = await page.evaluate(() => {
+        const f = document.querySelector('iframe') as HTMLIFrameElement | null
+        const el = f?.contentDocument?.querySelector('[contenteditable="true"]')
+        return el ? (el.textContent || '').length > 10 : false
+      })
 
       // 6. 保存
       if (titleOk && bodyOk) {
