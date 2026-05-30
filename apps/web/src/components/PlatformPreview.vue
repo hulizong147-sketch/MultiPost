@@ -91,21 +91,44 @@ async function doPublish() {
       </div>
     </div>
 
-    <!-- 小红书样式 -->
+    <!-- 小红书样式——手机框预览 -->
     <div v-else-if="isXhs" class="body-xhs">
-      <div class="xhs-card">
-        <div class="xhs-cover">
-          <span class="xhs-heart">&#9825; {{ 200 + content.body.length }}</span>
+      <div class="xhs-phone">
+        <!-- 手机顶部状态栏 -->
+        <div class="xhs-statusbar">
+          <span>9:41</span>
+          <div class="xhs-signal">
+            <span class="s-bar" /><span class="s-bar" /><span class="s-bar" /><span class="s-bar" />
+          </div>
         </div>
-        <h2 class="xhs-heading">{{ content.title }}</h2>
-        <p class="xhs-summary" v-if="content.summary">{{ content.summary }}</p>
-        <div class="xhs-body" v-html="content.body" />
-        <div class="xhs-meta">
-          <span class="xhs-author">{{ store.accounts.xiaohongshu?.username || '未设置账号' }}</span>
-          <span class="xhs-like">&#9825; {{ Math.floor(content.body.length / 3) }}</span>
+        <!-- RedNote App 头部 -->
+        <div class="xhs-apphead">
+          <span class="xhs-back">&larr;</span>
+          <div class="xhs-avtr" />
+          <span class="xhs-uname">{{ store.accounts.xiaohongshu?.username || '创作者' }}</span>
+          <button class="xhs-follow">关注</button>
+          <span class="xhs-share">&#8942;</span>
         </div>
-        <div v-if="content.tags.length" class="xhs-tags">
-          <span v-for="t in content.tags" :key="t" class="xhs-tag">#{{ t }}</span>
+        <!-- 图片区 -->
+        <div class="xhs-image">
+          <div class="xhs-imgdots">
+            <span class="dot active" /><span class="dot" /><span class="dot" />
+          </div>
+        </div>
+        <!-- 文案区 -->
+        <div class="xhs-content">
+          <h2 class="xhs-title">{{ content.title }}</h2>
+          <div class="xhs-body" v-html="content.body" />
+          <div v-if="content.tags.length" class="xhs-tags">
+            <span v-for="t in content.tags" :key="t" class="xhs-tag">#{{ t }}</span>
+          </div>
+        </div>
+        <!-- 底部互动栏 -->
+        <div class="xhs-actions">
+          <div class="xhs-act"><span class="xhs-icon">&#9825;</span> {{ 1200 + content.body.length }}</div>
+          <div class="xhs-act"><span class="xhs-icon">&#9733;</span> {{ 300 + Math.floor(content.body.length / 4) }}</div>
+          <div class="xhs-act"><span class="xhs-icon">&#8682;</span> {{ 80 + Math.floor(content.body.length / 10) }}</div>
+          <div class="xhs-act"><span class="xhs-icon">&#9998;</span> 评论</div>
         </div>
       </div>
     </div>
@@ -189,19 +212,48 @@ async function doPublish() {
 .zh-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
 .zh-tag { padding: 4px 10px; background: #f0f6ff; border-radius: 20px; font-size: 12px; color: #06f; }
 
-/* ===== 小红书样式 ===== */
-.body-xhs { padding: 14px; overflow-y: auto; flex: 1; display: flex; justify-content: center; }
-.xhs-card { max-width: 380px; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.08); }
-.xhs-cover { height: 140px; background: linear-gradient(135deg, #ff6b81, #ff4757); display: flex; align-items: flex-end; justify-content: flex-end; padding: 14px; position: relative; }
-.xhs-heart { color: #fff; font-size: 12px; text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
-.xhs-heading { font-size: 16px; font-weight: 600; color: #1a1a1a; padding: 14px 14px 6px; margin: 0; line-height: 1.4; }
-.xhs-summary { padding: 0 14px; font-size: 12px; color: #999; margin: 0 0 6px; line-height: 1.5; }
-.xhs-body { padding: 0 14px; font-size: 13px; color: #555; line-height: 1.75; }
+/* ===== 小红书 手机框样式 ===== */
+.body-xhs { padding: 12px; overflow-y: auto; flex: 1; display: flex; justify-content: center; }
+.xhs-phone {
+  width: 100%; max-width: 340px;
+  border: 3px solid #1a1a1a; border-radius: 36px;
+  background: #fff; overflow: hidden;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.2);
+}
+.xhs-statusbar { display: flex; justify-content: space-between; padding: 8px 20px 4px; font-size: 10px; font-weight: 600; color: #1a1a1a; }
+.xhs-signal { display: flex; align-items: flex-end; gap: 1px; }
+.s-bar { display: block; }
+.s-bar:nth-child(1) { width: 2px; height: 5px; background: #1a1a1a; border-radius: 1px; }
+.s-bar:nth-child(2) { width: 2px; height: 7px; background: #1a1a1a; border-radius: 1px; }
+.s-bar:nth-child(3) { width: 2px; height: 9px; background: #1a1a1a; border-radius: 1px; }
+.s-bar:nth-child(4) { width: 5px; height: 11px; background: #1a1a1a; border-radius: 2px; }
+
+.xhs-apphead { display: flex; align-items: center; gap: 8px; padding: 6px 14px 8px; }
+.xhs-back { font-size: 16px; color: #333; cursor: pointer; }
+.xhs-avtr { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #ff2e63, #ffb88c); flex-shrink: 0; }
+.xhs-uname { font-size: 12px; font-weight: 600; color: #1a1a1a; flex: 1; }
+.xhs-follow { padding: 3px 12px; border: none; border-radius: 20px; background: #ff2e63; color: #fff; font-size: 10px; font-weight: 500; cursor: pointer; }
+.xhs-share { font-size: 18px; color: #666; cursor: pointer; margin-left: auto; }
+
+.xhs-image { position: relative; height: 260px; background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 50%, #fbc2eb 100%); }
+.xhs-imgdots { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; }
+.xhs-imgdots .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.5); }
+.xhs-imgdots .dot.active { background: #ff2e63; box-shadow: 0 0 0 3px rgba(255,46,99,0.15); }
+
+.xhs-content { padding: 12px 14px; }
+.xhs-title { font-size: 15px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px; line-height: 1.4; }
+.xhs-body { font-size: 13px; color: #555; line-height: 1.75; margin-bottom: 10px; }
 .xhs-body :deep(p) { margin-bottom: 8px; }
-.xhs-body :deep(strong) { color: #333; }
-.xhs-meta { display: flex; justify-content: space-between; padding: 10px 14px; font-size: 11px; color: #bbb; border-top: 1px solid #f5f5f5; margin-top: 10px; }
-.xhs-tags { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 14px; }
-.xhs-tag { padding: 3px 8px; background: #fff0f3; border-radius: 4px; font-size: 11px; color: #ff4757; }
+.xhs-body :deep(strong) { color: #333; font-weight: 600; }
+.xhs-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.xhs-tag { padding: 3px 8px; background: #fff0f3; border-radius: 4px; font-size: 11px; color: #ff2e63; }
+
+.xhs-actions { display: flex; justify-content: space-around; padding: 10px 14px 14px; border-top: 1px solid #f5f5f5; }
+.xhs-act { display: flex; align-items: center; gap: 3px; font-size: 11px; color: #999; }
+.xhs-icon { font-size: 15px; }
+.xhs-act:first-child .xhs-icon { color: #ff2e63; }
+.xhs-act:nth-child(2) .xhs-icon { color: #ffb02c; }
+.xhs-act:nth-child(3) .xhs-icon { color: #3b5bdb; }
 
 /* ===== B站样式 ===== */
 .body-bili { padding: 20px 18px; overflow-y: auto; flex: 1; background: #fff; color: #18191c; border-radius: 0 0 14px 14px; }
