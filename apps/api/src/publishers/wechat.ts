@@ -68,53 +68,75 @@ export class WeChatPublisher extends BasePublisher {
       }
 
       // 再等一会确保 React 组件和 iframe 完全渲染
+      // 再等一会确保组件渲染
       await page.waitForTimeout(3000)
 
-      // 5. 填入标题
-      let titleOk = false, titleErr = ''
-      try {
-        const el = page.locator(SEL.title).first()
-        await el.waitFor({ timeout: 10000 })
-        await el.click()
-        await el.fill(content.title)
-        titleOk = true
-      } catch (e: any) { titleErr = e.message.split('\n')[0] }
+      // 5. 用 JS 直接注入内容 — 不依赖 Playwright 选择器等待
+      let titleOk = false, bodyOk = false, authorOk = false, saved = false
+      let titleErr = '', bodyErr = '', authorErr = '', saveErr = ''
 
-      // 6. 填入正文 — 公众号正文在 #ueditor_0 iframe 内
-      let bodyOk = false, bodyErr = ''
-      try {
-        const fh = page.locator(SEL.bodyFrame)
-        await fh.waitFor({ timeout: 10000 })
-        await page.waitForTimeout(2000)
-        const frame = await fh.contentFrame()
-        if (frame) {
-          const area = frame.locator('[contenteditable="true"], body').first()
-          await area.waitFor({ timeout: 5000 })
-          await area.click()
-          await area.type(content.body, { delay: 2 })
-          bodyOk = true
-        } else { bodyErr = 'iframe内容获取失败' }
-      } catch (e: any) { bodyErr = e.message.split('\n')[0] }
+      await page.evaluate((data: any) => {
+        // 标题：找 #js_title_main 下的可编辑元素
+        const titleArea = document.querySelector('#js_title_main')
+        if (titleArea) {
+          const input = titleArea.querySelector('input, textarea, [contenteditable="true"]') as HTMLElement
+          if (input) {
+            if ('value' in input) (input as any).value = data.title
+            else input.textContent = data.title
+            input.dispatchEvent(new Event('input', { bubbles: true }))
+            data.__titleOk = true
+          }
+        }
 
-      // 7. 填入作者
-      let authorOk = false, authorErr = ''
-      try {
-        const ael = page.locator(SEL.author)
-        await ael.waitFor({ timeout: 5000 })
-        await ael.click()
-        await ael.fill(content.title.slice(0, 8))
-        authorOk = true
-      } catch (e: any) { authorErr = e.message.split('\n')[0] }
+        // 正文：进入 #ueditor_0 iframe
+        const editorFrame = document.querySelector('#ueditor_0') as HTMLIFrameElement
+        if (editorFrame?.contentDocument) {
+          const body = editorFrame.contentDocument.querySelector('[contenteditable="true"], body')
+          if (body) {
+            body.textContent = data.body
+            body.dispatchEvent(new Event('input', { bubbles: true }))
+            data.__bodyOk = true
+          }
+        }
 
-      // 8. 保存
-      let saved = false, saveErr = ''
+        // 作者
+        const authorInput = document.querySelector('#author') as HTMLInputElement
+        if (authorInput) {
+          authorInput.value = data.authorName
+          authorInput.dispatchEvent(new Event('input', { bubbles: true }))
+          data.__authorOk = true
+        }
+      }, { title: content.title, body: content.body, authorName: content.title.slice(0, 8) })
+
+      // 提取 evaluate 执行结果（因为 __ 属性会挂在传入对象上）
+      // JS evaluate 不能直接返回被序列化问题影响的值，改用两次 evaluate
+      titleOk = await page.evaluate(() => {
+        const a = document.querySelector('#js_title_main input, #js_title_main textarea') as HTMLInputElement
+        return a ? a.value.length > 0 : false
+      })
+
+      bodyOk = await page.evaluate(() => {
+        const f = document.querySelector('#ueditor_0') as HTMLIFrameElement
+        if (f?.contentDocument) {
+          const b = f.contentDocument.querySelector('[contenteditable="true"], body')
+          return b ? (b.textContent || '').length > 10 : false
+        }
+        return false
+      })
+
+      authorOk = await page.evaluate(() => {
+        const a = document.querySelector('#author') as HTMLInputElement
+        return a ? a.value.length > 0 : false
+      })
+
+      // 6. 保存
       try {
-        const sbtn = page.locator(SEL.save)
+        const sbtn = page.locator('#js_submit > button')
         await sbtn.waitFor({ timeout: 5000 })
         await sbtn.click()
         await page.waitForTimeout(2000)
         saved = true
-      } catch (e: any) { saveErr = e.message.split('\n')[0] }
+      } catch (e: any) { saveErr = e.message?.split('\n')[0] || '' }
 
       let msg = `标题:${titleOk ? '✅' : '❌'} 正文:${bodyOk ? '✅' : '❌'} 作者:${authorOk ? '✅' : '❌'} 保存:${saved ? '✅' : '❌'}`
       if (!titleOk) msg += ` | 标题:${titleErr}`
