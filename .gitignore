@@ -7,3 +7,6 @@ dist/
 .vite/
 .turbo/
 coverage/
+apps/.vite-cache
+apps/web/node_modules/.vite-temp
+apps/web/node_modules/.vite
