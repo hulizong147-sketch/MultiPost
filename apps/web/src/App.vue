@@ -35,6 +35,7 @@ const showAccount = ref(false)
         <span class="divider" />
         <TransformButton />
         <button v-if="Object.keys(store.results).length" class="ghost-btn accent" @click="store.copyAll()">Copy all</button>
+        <button v-if="store.markdown.trim()" class="ghost-btn" @click="store.downloadMD()">Download MD</button>
       </div>
     </header>
 

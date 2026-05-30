@@ -1,11 +1,17 @@
 /**
  * MultiPost 自动发布 CLI
  *
- * 用法（在你的 Windows 终端里执行）：
- *   cd D:\MultiPost
- *   npx tsx scripts/publish.ts --platform csdn --file ./article.md
- *   或
- *   pnpm publish:csdn -- ./article.md
+ * 用法（在你的 Windows 终端里执行，不是在 WorkBuddy 里）：
+ *
+ *   方式1 — 从文件发布：
+ *     cd D:\MultiPost
+ *     pnpm publish:csdn --file ./article.md
+ *
+ *   方式2 — 从剪贴板发布（Ctrl+V 粘贴内容后按 Ctrl+Z 再回车）：
+ *     pnpm publish:csdn --stdin --title "文章标题"
+ *
+ *   方式3 — 从 API 发布（先启动 MultiPost web app，写完内容后执行）：
+ *     pnpm publish:csdn --fetch
  *
  * 注意：此脚本脱离 WorkBuddy 沙箱，直接在你的电脑上运行，
  * 使用 Playwright 控制本地 Chrome 实现全自动发布。
@@ -115,39 +121,94 @@ function waitForEnter(): Promise<void> {
 
 function parseArgs() {
   const args = process.argv.slice(2)
-  const opts: { platform?: string; file?: string; title?: string } = {}
+  const opts: { platform?: string; file?: string; title?: string; stdin?: boolean; fetch?: boolean } = {}
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--platform' && args[i + 1]) opts.platform = args[++i]
     else if (args[i] === '--file' && args[i + 1]) opts.file = args[++i]
     else if (args[i] === '--title' && args[i + 1]) opts.title = args[++i]
+    else if (args[i] === '--stdin') opts.stdin = true
+    else if (args[i] === '--fetch') opts.fetch = true
     else if (!args[i].startsWith('--')) opts.file = args[i]
   }
   return opts
 }
 
-function extractTitle(md: string): string {
-  const match = md.match(/^#\s+(.+)$/m)
-  return match ? match[1].trim() : '未命名'
+// ====== 从标准输入读取 ======
+function readFromStdin(): Promise<string> {
+  return new Promise((resolve) => {
+    let data = ''
+    process.stdin.setEncoding('utf-8')
+    process.stdin.on('data', chunk => { data += chunk })
+    process.stdin.on('end', () => resolve(data.trim()))
+    process.stdin.resume()
+  })
+}
+
+// ====== 从 API 读取当前编辑内容 ======
+async function fetchFromAPI(): Promise<{ markdown: string; title: string }> {
+  try {
+    const res = await fetch('http://localhost:3000/api/health')
+    if (!res.ok) throw new Error('API 未运行')
+  } catch {
+    throw new Error('请先启动 MultiPost: pnpm --filter @multipost/api dev')
+  }
+  // 注意：API 没有直接暴露当前 markdown 的端点
+  // 所以 --fetch 模式提示用户从 web app 复制
+  throw new Error(
+    '请先在 MultiPost 网页中点击 Sample 加载内容，然后使用 --file 或 --stdin 方式发布\n' +
+    '  方式1: 在网页中复制 markdown → pnpm publish:csdn --stdin --title "标题"\n' +
+    '  方式2: 在网页中复制 markdown → 保存为 article.md → pnpm publish:csdn --file article.md'
+  )
 }
 
 // ====== 入口 ======
 async function main() {
   const opts = parseArgs()
 
-  if (!opts.file) {
-    console.log('用法: npx tsx scripts/publish.ts [--platform csdn] --file ./article.md [--title "标题"]')
-    console.log('      pnpm publish:csdn -- ./article.md')
+  let markdown = ''
+  let title = opts.title || ''
+
+  if (opts.stdin) {
+    console.log('📋 请粘贴 Markdown 内容，然后按 Ctrl+Z 再按回车：')
+    markdown = await readFromStdin()
+  } else if (opts.fetch) {
+    try {
+      const result = await fetchFromAPI()
+      markdown = result.markdown
+      title = title || result.title
+    } catch (err: any) {
+      console.error(`❌ ${err.message}`)
+      process.exit(1)
+    }
+  } else if (opts.file) {
+    const filePath = path.resolve(opts.file)
+    if (!fs.existsSync(filePath)) {
+      console.error(`❌ 文件不存在: ${filePath}`)
+      console.log('')
+      console.log('三种使用方式:')
+      console.log('  1. 文件: pnpm publish:csdn --file ./article.md')
+      console.log('  2. 粘贴: pnpm publish:csdn --stdin --title "标题"')
+      console.log('  3. API:  pnpm publish:csdn --fetch')
+      process.exit(1)
+    }
+    markdown = fs.readFileSync(filePath, 'utf-8')
+  } else {
+    console.log('MultiPost 全自动发布 CLI')
+    console.log('')
+    console.log('三种使用方式:')
+    console.log('  1. 从文件发布:   pnpm publish:csdn --file ./article.md --title "标题"')
+    console.log('  2. 粘贴内容发布:  pnpm publish:csdn --stdin --title "标题"')
+    console.log('                  （粘贴 Markdown 后按 Ctrl+Z 再回车）')
+    console.log('  3. 从 API 发布:   pnpm publish:csdn --fetch')
     process.exit(1)
   }
 
-  const filePath = path.resolve(opts.file)
-  if (!fs.existsSync(filePath)) {
-    console.error(`❌ 文件不存在: ${filePath}`)
+  if (!markdown.trim()) {
+    console.error('❌ 内容为空')
     process.exit(1)
   }
 
-  const markdown = fs.readFileSync(filePath, 'utf-8')
-  const title = opts.title || extractTitle(markdown)
+  title = title || extractTitle(markdown)
 
   console.log(`📋 文章: ${title}`)
   console.log(`📏 长度: ${markdown.length} 字符`)

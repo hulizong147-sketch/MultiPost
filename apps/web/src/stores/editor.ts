@@ -107,6 +107,18 @@ export const useEditorStore = defineStore('editor', () => {
     navigator.clipboard.writeText(texts.join('\n'))
   }
 
+  /** 下载当前 Markdown 为 .md 文件 */
+  function downloadMD() {
+    if (!markdown.value.trim()) return
+    const blob = new Blob([markdown.value], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `multipost-${new Date().toISOString().slice(0, 10)}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   // 从 localStorage 加载账号
   try {
     const saved = localStorage.getItem('multipost_accounts')
@@ -153,6 +165,6 @@ export const useEditorStore = defineStore('editor', () => {
 
   return { markdown, selectedPlatforms, results, isLoading, error, platforms, accounts, publishHistory,
     publishingTarget, publishMessage,
-    loadSample, loadPlatforms, togglePlatform, doTransform, copyAll, saveAccount, removeAccount,
+    loadSample, loadPlatforms, togglePlatform, doTransform, copyAll, downloadMD, saveAccount, removeAccount,
     simulatePublish, realPublish }
 })
