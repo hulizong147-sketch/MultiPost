@@ -59,30 +59,37 @@ export class WeChatPublisher extends BasePublisher {
 
       let titleOk = false, bodyOk = false, saved = false
 
-      // 截图诊断
-      await page.screenshot({ path: path.join(os.homedir(), 'Desktop', 'wechat-debug.png') }).catch(() => {})
-
-      // 3. 标题 — click → select all → type
+      // 3. 标题 — focus → type → blur (React 受控组件需要完整事件链)
       try {
-        const t = page.locator('#title')
-        await t.click({ timeout: 5000 })
-        await page.keyboard.press('Control+a')
-        await page.keyboard.type(content.title, { delay: 5 })
-        await page.waitForTimeout(300)
-        const v = await t.inputValue().catch(() => '')
-        titleOk = v.length > 0
+        await page.evaluate((text: string) => {
+          const el = document.querySelector('#title') as HTMLTextAreaElement
+          if (el) {
+            el.focus()
+            el.value = text
+            el.dispatchEvent(new Event('input', { bubbles: true }))
+            el.dispatchEvent(new Event('change', { bubbles: true }))
+            el.blur()
+          }
+        }, content.title)
+        await page.waitForTimeout(500)
+        titleOk = await page.locator('#title').inputValue().then(v => v.length > 0).catch(() => false)
       } catch {}
 
-      // 4. 正文 iframe — click → select all → type
+      // 4. 正文 — iframe 内 focus → type → blur
       try {
         const frame = await page.locator('iframe').first().contentFrame({ timeout: 5000 })
         if (frame) {
-          const b = frame.locator('[contenteditable="true"], body').first()
-          await b.click({ timeout: 5000 })
-          await frame.keyboard.press('Control+a')
-          await frame.keyboard.type(content.body, { delay: 1 })
-          await page.waitForTimeout(300)
-          bodyOk = ((await b.textContent()) || '').length > 10
+          await frame.evaluate((text: string) => {
+            const el = document.querySelector('[contenteditable="true"]') as HTMLElement
+            if (el) {
+              el.focus()
+              el.innerText = text
+              el.dispatchEvent(new Event('input', { bubbles: true }))
+              el.blur()
+            }
+          }, content.body)
+          await page.waitForTimeout(500)
+          bodyOk = await frame.locator('[contenteditable="true"]').innerText().then(t => t.length > 10).catch(() => false)
         }
       } catch {}
 
