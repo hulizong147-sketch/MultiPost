@@ -70,7 +70,7 @@ export const useEditorStore = defineStore('editor', () => {
     if (!markdown.value.trim() || selectedPlatforms.value.length === 0) return
     isLoading.value = true; error.value = ''
     // 裁掉 base64 大图数据，避免请求体过大导致后端崩溃
-    const cleanMd = markdown.value.replace(/!\[([^\]]*)\]\(data:image\/[^)]+\)/g, '![$1（图片已省略）]()')
+    const cleanMd = markdown.value.replace(/!\[([^\]]*)\]\(data:image\/[^)]+\)/g, '![$1](https://placehold.co/400x300/e8e4ff/7f77dd?text=%F0%9F%93%B7+%E5%9B%BE%E7%89%87)
     try {
       const res = await transformContent({ markdown: cleanMd, platforms: selectedPlatforms.value })
       results.value = res.results
