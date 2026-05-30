@@ -12,12 +12,12 @@ import { BasePublisher, type PublishResult } from './base.js'
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
 const UDD = path.join(os.homedir(), '.multipost', 'chrome-wechat')
 
-// 只保留编辑器内的选择器，首页用 getByText
+// 编辑器选择器 — 由 dom-report.txt 实测确认
 const SEL = {
-  title: '#js_title_main > div > div > div > div',
+  title: '#title',
   author: '#author',
-  bodyFrame: '#ueditor_0',
-  save: '#js_submit > button',
+  bodyFrame: 'iframe',  // 正文在页面唯一 iframe 内
+  save: 'button:has-text("保存"), button:has-text("发表")',
 }
 
 export class WeChatPublisher extends BasePublisher {
@@ -91,7 +91,13 @@ export class WeChatPublisher extends BasePublisher {
         }
         const frames = document.querySelectorAll('iframe')
         for (const f of frames) {
-          report.push(`iframe#${f.id || '(无id)'}`)
+          report.push(`iframe#${f.id || '(无id)'} src=${(f.getAttribute('src')||'').slice(0,30)}`)
+        }
+        // 按钮
+        const btns = document.querySelectorAll('button, [role="button"]')
+        for (const b of btns) {
+          const txt = (b.textContent || '').trim().slice(0, 20)
+          report.push(`button text="${txt}"`)
         }
         return report.join('\n') || '(未找到可编辑元素)'
       })
@@ -106,7 +112,7 @@ export class WeChatPublisher extends BasePublisher {
 
       await page.evaluate((data: any) => {
         // 标题：找 #js_title_main 下的可编辑元素
-        const titleArea = document.querySelector('#js_title_main')
+        const titleArea = document.querySelector('#title')
         if (titleArea) {
           const input = titleArea.querySelector('input, textarea, [contenteditable="true"]') as HTMLElement
           if (input) {
@@ -117,13 +123,13 @@ export class WeChatPublisher extends BasePublisher {
           }
         }
 
-        // 正文：进入 #ueditor_0 iframe
-        const editorFrame = document.querySelector('#ueditor_0') as HTMLIFrameElement
-        if (editorFrame?.contentDocument) {
-          const body = editorFrame.contentDocument.querySelector('[contenteditable="true"], body')
-          if (body) {
+        // 正文：进入页面唯一 iframe
+        const fh = page.locator('iframe').first()
+        if (await fh.count() > 0) {
+          const frame = await fh.contentFrame()
+          if (frame) {
+            const body = frame.locator('[contenteditable="true"], body').first()
             body.textContent = data.body
-            body.dispatchEvent(new Event('input', { bubbles: true }))
             data.__bodyOk = true
           }
         }
@@ -140,12 +146,12 @@ export class WeChatPublisher extends BasePublisher {
       // 提取 evaluate 执行结果（因为 __ 属性会挂在传入对象上）
       // JS evaluate 不能直接返回被序列化问题影响的值，改用两次 evaluate
       titleOk = await page.evaluate(() => {
-        const a = document.querySelector('#js_title_main input, #js_title_main textarea') as HTMLInputElement
+        const a = document.querySelector('#title') as HTMLTextAreaElement
         return a ? a.value.length > 0 : false
       })
 
       bodyOk = await page.evaluate(() => {
-        const f = document.querySelector('#ueditor_0') as HTMLIFrameElement
+        const f = document.querySelector('iframe') as HTMLIFrameElement
         if (f?.contentDocument) {
           const b = f.contentDocument.querySelector('[contenteditable="true"], body')
           return b ? (b.textContent || '').length > 10 : false
