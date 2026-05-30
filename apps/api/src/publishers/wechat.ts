@@ -34,7 +34,7 @@ export class WeChatPublisher extends BasePublisher {
         viewport: { width: 1280, height: 900 },
         args: BasePublisher.CHROME_ARGS,
       })
-      const page = browser.pages()[0]
+      let page = browser.pages()[0]
 
       // 1. 打开后台首页
       await page.goto('https://mp.weixin.qq.com/', { waitUntil: 'networkidle', timeout: 30000 })
@@ -50,25 +50,37 @@ export class WeChatPublisher extends BasePublisher {
       // 3. 截图
       await page.screenshot({ path: path.join(os.homedir(), 'Desktop', 'wechat-publish.png') }).catch(() => {})
 
-      // 4. 点击「新建图文」进入编辑器
+      // 4. 点击「新建图文」— 公众号会在新标签页打开编辑器
       let inEditor = false
       try {
         const btn = page.locator(SEL.newArticle)
         await btn.waitFor({ timeout: 10000 })
+
+        // 监听新页面打开
+        const newPagePromise = browser.waitForEvent('page', { timeout: 30000 }).catch(() => null)
+
         await btn.click()
-        await page.waitForTimeout(8000)  // 编辑器加载需要时间
-        inEditor = true
+
+        // 等待新页面
+        const newPage = await newPagePromise
+        if (newPage) {
+          console.log('检测到新标签页，切换到编辑器')
+          await newPage.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {})
+          page = newPage
+          inEditor = true
+        }
+        await page.waitForTimeout(5000)
       } catch {
         await page.goto(
           'https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=10&lang=zh_CN',
           { waitUntil: 'networkidle', timeout: 20000 }
         )
-        await page.waitForTimeout(8000)
+        await page.waitForTimeout(5000)
         inEditor = !page.url().includes('login')
       }
 
-      // 等编辑器完全渲染
-      await page.waitForTimeout(5000)
+      // 等编辑器渲染完毕后再等 3 秒
+      await page.waitForTimeout(3000)
 
       // ====== DOM 诊断（测试完就删） ======
       const domReport = await page.evaluate(() => {
