@@ -35,7 +35,7 @@ onMounted(() => {
       const text = update.state.doc.toString()
       store.markdown = text
       clearTimeout(debounceTimer!)
-      debounceTimer = setTimeout(() => { if (text.trim()) store.doTransform() }, 400)
+      debounceTimer = setTimeout(() => { if (text.trim()) store.doTransform() }, 600)
     }
   })
 

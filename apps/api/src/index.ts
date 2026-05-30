@@ -2,9 +2,24 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import { transformRoutes } from './routes/transform.js'
 
-const app = Fastify({ logger: true })
+const app = Fastify({
+  logger: true,
+  connectionTimeout: 10000,
+  requestTimeout: 30000,
+  keepAliveTimeout: 5000,
+})
 
 await app.register(cors, { origin: true })
+
+app.setErrorHandler((error, _request, reply) => {
+  app.log.error(error)
+  reply.status(500).send({ error: '服务器内部错误' })
+})
+
+app.addHook('onTimeout', (_request, reply, done) => {
+  reply.status(408).send({ error: '请求超时' })
+  done()
+})
 
 // 健康检查
 app.get('/api/health', async () => {
