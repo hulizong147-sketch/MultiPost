@@ -12,9 +12,8 @@ import { BasePublisher, type PublishResult } from './base.js'
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
 const UDD = path.join(os.homedir(), '.multipost', 'chrome-wechat')
 
-// DOM 选择器 — F12 实测
+// 只保留编辑器内的选择器，首页用 getByText
 const SEL = {
-  newArticle: '#app > div.main_bd_new > div:nth-child(3) > div.weui-desktop-panel__bd > div > div:nth-child(2)',
   title: '#js_title_main > div > div > div > div',
   author: '#author',
   bodyFrame: '#ueditor_0',
@@ -50,21 +49,18 @@ export class WeChatPublisher extends BasePublisher {
       // 3. 截图
       await page.screenshot({ path: path.join(os.homedir(), 'Desktop', 'wechat-publish.png') }).catch(() => {})
 
-      // 4. 点击「新建图文」— 公众号会在新标签页打开编辑器
+      // 4. 点击「文章」进入编辑器（首页「新的创作」→「文章」）
       let inEditor = false
       try {
-        const btn = page.locator(SEL.newArticle)
-        await btn.waitFor({ timeout: 10000 })
+        // 先找「新的创作」区域，再点「文章」
+        const articleBtn = page.getByText('文章', { exact: true }).first()
+        await articleBtn.waitFor({ timeout: 10000 })
 
-        // 监听新页面打开
-        const newPagePromise = browser.waitForEvent('page', { timeout: 30000 }).catch(() => null)
+        const newPageProm = browser.waitForEvent('page', { timeout: 30000 }).catch(() => null)
+        await articleBtn.click()
 
-        await btn.click()
-
-        // 等待新页面
-        const newPage = await newPagePromise
+        const newPage = await newPageProm
         if (newPage) {
-          console.log('检测到新标签页，切换到编辑器')
           await newPage.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {})
           page = newPage
           inEditor = true
