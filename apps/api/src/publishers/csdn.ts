@@ -29,14 +29,17 @@ export class CSDNPublisher extends BasePublisher {
       await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 20000 })
       await page.waitForTimeout(3000)
 
-      // 2. 检测登录
+      // 2. 检测登录 — 等待用户完成登录
       if (page.url().includes('passport') || page.url().includes('login')) {
-        await browser.close()
-        return {
-          success: false,
-          platform: PlatformType.CSDN,
-          message: 'CSDN 未登录。请在浏览器中登录 CSDN 后重试。（登录 Cookie 会被保存，下次无需再登）',
+        console.log('🔄 请在浏览器中登录 CSDN（首次登录后 Cookie 会被保存）...')
+        const loggedIn = await this.waitForLogin(page, ['passport', 'login'])
+        if (!loggedIn) {
+          await browser.close()
+          return { success: false, platform: PlatformType.CSDN, message: 'CSDN 登录超时（3分钟），请重试' }
         }
+        // 登录成功后重新导航
+        await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 20000 })
+        await page.waitForTimeout(2000)
       }
 
       // 3. 填入标题

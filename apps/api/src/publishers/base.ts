@@ -28,21 +28,34 @@ export abstract class BasePublisher {
 
   /**
    * 执行发布
-   * @param content 已转换好的平台特定内容
-   * @returns 发布结果
    */
   abstract publish(content: PlatformContent): Promise<PublishResult>
 
   /**
-   * 检查登录状态（可选覆盖）
+   * 等待用户在浏览器中完成登录
+   * 轮询 URL，直到离开登录页（最多等 3 分钟）
+   *
+   * @param page Playwright Page 对象
+   * @param loginKeywords URL 中包含这些关键词说明还在登录页
+   * @returns true=已登录, false=超时
    */
+  protected async waitForLogin(page: any, loginKeywords: string[]): Promise<boolean> {
+    const maxWait = 180 // 3 分钟
+    for (let i = 0; i < maxWait; i++) {
+      try {
+        const url = page.url()
+        const stillOnLogin = loginKeywords.some(k => url.toLowerCase().includes(k.toLowerCase()))
+        if (!stillOnLogin) return true
+      } catch { /* 页面可能正在跳转 */ }
+      await new Promise(r => setTimeout(r, 2000)) // 每 2 秒检查一次
+    }
+    return false
+  }
+
   async checkLogin(): Promise<boolean> {
     return false
   }
 
-  /**
-   * 打开浏览器让用户手动登录（可选覆盖）
-   */
   async openLogin(): Promise<void> {
     throw new Error(`${this.platformType} 不支持自动登录，请手动操作`)
   }

@@ -36,15 +36,22 @@ export class WeChatPublisher extends BasePublisher {
       await page.goto('https://mp.weixin.qq.com/', { waitUntil: 'domcontentloaded', timeout: 20000 })
       await page.waitForTimeout(3000)
 
-      // 检测登录
+      // 检测登录 — 如果需要扫码，等用户扫完
       if (page.url().includes('login') || page.url().includes('qrconnect')) {
-        await browser.close()
-        return { success: false, platform: PlatformType.WECHAT_MP, message: '公众号未登录。请用微信扫码登录后重试。' }
+        console.log('🔄 请在浏览器中扫码登录公众号...')
+        const loggedIn = await this.waitForLogin(page, ['login', 'qrconnect'])
+        if (!loggedIn) {
+          await browser.close()
+          return { success: false, platform: PlatformType.WECHAT_MP, message: '公众号登录超时（3分钟），请重试' }
+        }
+        // 登录成功，重新导航到编辑器
+        await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 20000 })
+        await page.waitForTimeout(3000)
+      } else {
+        // 已登录，直接导航到编辑器
+        await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 20000 })
+        await page.waitForTimeout(3000)
       }
-
-      // 导航到新建图文页面
-      await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 20000 })
-      await page.waitForTimeout(3000)
 
       // 填入标题
       const titleSel = '#title, input[placeholder*="标题"], .editor_title input'

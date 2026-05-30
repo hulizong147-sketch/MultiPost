@@ -33,8 +33,14 @@ export class ToutiaoPublisher extends BasePublisher {
       await page.waitForTimeout(3000)
 
       if (page.url().includes('login') || page.url().includes('passport')) {
-        await browser.close()
-        return { success: false, platform: PlatformType.TOUTIAO, message: '头条未登录。请先登录头条号后重试。' }
+        console.log('🔄 请在浏览器中登录头条号...')
+        const loggedIn = await this.waitForLogin(page, ['login', 'passport'])
+        if (!loggedIn) {
+          await browser.close()
+          return { success: false, platform: PlatformType.TOUTIAO, message: '头条登录超时（3分钟），请重试' }
+        }
+        await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 20000 })
+        await page.waitForTimeout(2000)
       }
 
       // 填入标题

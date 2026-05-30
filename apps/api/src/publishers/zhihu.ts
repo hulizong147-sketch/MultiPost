@@ -33,8 +33,14 @@ export class ZhihuPublisher extends BasePublisher {
       await page.waitForTimeout(3000)
 
       if (page.url().includes('signin') || page.url().includes('login')) {
-        await browser.close()
-        return { success: false, platform: PlatformType.ZHIHU, message: '知乎未登录。请先登录知乎后重试。' }
+        console.log('🔄 请在浏览器中登录知乎...')
+        const loggedIn = await this.waitForLogin(page, ['signin', 'login'])
+        if (!loggedIn) {
+          await browser.close()
+          return { success: false, platform: PlatformType.ZHIHU, message: '知乎登录超时（3分钟），请重试' }
+        }
+        await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 20000 })
+        await page.waitForTimeout(2000)
       }
 
       // 填入标题

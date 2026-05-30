@@ -37,8 +37,14 @@ export class BilibiliPublisher extends BasePublisher {
 
       // 2. 检测登录
       if (page.url().includes('passport') || page.url().includes('login')) {
-        await browser.close()
-        return { success: false, platform: PlatformType.BILIBILI, message: 'B站未登录。请先登录 B站 后重试。' }
+        console.log('🔄 请在浏览器中登录 B站...')
+        const loggedIn = await this.waitForLogin(page, ['passport', 'login'])
+        if (!loggedIn) {
+          await browser.close()
+          return { success: false, platform: PlatformType.BILIBILI, message: 'B站登录超时（3分钟），请重试' }
+        }
+        await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 20000 })
+        await page.waitForTimeout(2000)
       }
 
       // 3. 填入标题

@@ -37,8 +37,14 @@ export class XiaohongshuPublisher extends BasePublisher {
 
       // 检测登录
       if (page.url().includes('login') || page.url().includes('signin')) {
-        await browser.close()
-        return { success: false, platform: PlatformType.XIAOHONGSHU, message: '小红书未登录。请先登录小红书创作中心后重试。' }
+        console.log('🔄 请在浏览器中登录小红书...')
+        const loggedIn = await this.waitForLogin(page, ['login', 'signin'])
+        if (!loggedIn) {
+          await browser.close()
+          return { success: false, platform: PlatformType.XIAOHONGSHU, message: '小红书登录超时（3分钟），请重试' }
+        }
+        await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 20000 })
+        await page.waitForTimeout(2000)
       }
 
       // 填入标题（小红书笔记标题）
