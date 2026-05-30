@@ -66,14 +66,16 @@ export class WeChatPublisher extends BasePublisher {
       }, content.title)
       await page.waitForTimeout(500)
 
-      // 4. 正文 — iframe innerHTML
+      // 4. 正文 — execCommand insertHTML（UEditor 只认这个）
       await page.evaluate((html: string) => {
         const f = document.querySelector('iframe') as HTMLIFrameElement | null
         const doc = f?.contentDocument
-        const el = doc?.querySelector('[contenteditable="true"]') || doc?.body
-        if (el) { el.innerHTML = html; el.dispatchEvent(new Event('input', { bubbles: true })) }
+        if (doc) {
+          doc.execCommand('selectAll')
+          doc.execCommand('insertHTML', false, html)
+        }
       }, content.body)
-      await page.waitForTimeout(300)
+      await page.waitForTimeout(500)
 
       // 5. 作者
       try { await page.locator('#author').fill(content.title.slice(0, 8), { timeout: 3000 }) } catch {}
