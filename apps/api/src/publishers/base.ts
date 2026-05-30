@@ -33,23 +33,28 @@ export abstract class BasePublisher {
 
   /**
    * 等待用户在浏览器中完成登录
-   * 轮询 URL，直到离开登录页（最多等 3 分钟）
+   *
+   * 策略：先等 minWaitSec 秒（给 OAuth 跳转留时间），再轮询 URL。
    *
    * @param page Playwright Page 对象
    * @param loginKeywords URL 中包含这些关键词说明还在登录页
-   * @returns true=已登录, false=超时
+   * @param minWaitSec 最少等待秒数（默认 30s，处理 OAuth 跳转）
    */
-  protected async waitForLogin(page: any, loginKeywords: string[]): Promise<boolean> {
-    const maxWait = 180 // 3 分钟
-    for (let i = 0; i < maxWait; i++) {
+  protected async waitForLogin(page: any, loginKeywords: string[], minWaitSec = 30): Promise<boolean> {
+    // 先等最小时间，避免 OAuth 跳转中误判已登录
+    await new Promise(r => setTimeout(r, minWaitSec * 1000))
+    // 再轮询最多 5 分钟
+    const maxPoll = 150
+    for (let i = 0; i < maxPoll; i++) {
       try {
         const url = page.url()
         const stillOnLogin = loginKeywords.some(k => url.toLowerCase().includes(k.toLowerCase()))
         if (!stillOnLogin) return true
-      } catch { /* 页面可能正在跳转 */ }
-      await new Promise(r => setTimeout(r, 2000)) // 每 2 秒检查一次
+      } catch { /* 页面跳转中 */ }
+      await new Promise(r => setTimeout(r, 2000))
     }
     return false
+  }
   }
 
   async checkLogin(): Promise<boolean> {
