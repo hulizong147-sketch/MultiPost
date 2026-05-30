@@ -63,20 +63,23 @@ export class WeChatPublisher extends BasePublisher {
 
       let titleOk = false, bodyOk = false, saved = false
 
-      // 3. 标题 — 键盘逐字输入（React 唯一接受的方式）
+      // 3. 标题 — keyboard.type + 双重验证
       try {
-        // 点击 textarea 本身（不是外层 div）
         await page.locator('textarea#title').click({ timeout: 5000 })
         await page.waitForTimeout(500)
-        // 确认焦点
-        const focusedId = await page.evaluate(() => document.activeElement?.id || 'none')
-        if (focusedId === 'title') {
+        const focused = await page.evaluate(() => document.activeElement?.id || '')
+        if (focused === 'title') {
           await page.keyboard.press('Control+a')
           await page.keyboard.type(content.title, { delay: 10 })
-          await page.waitForTimeout(500)
-          titleOk = (await page.locator('#title').inputValue().catch(() => ''))!.length > 0
+          // 双重检查: Playwright API vs 原生 DOM
+          const pv = (await page.locator('#title').inputValue().catch(() => ''))
+          const dv = await page.evaluate(() => (document.querySelector('#title') as HTMLTextAreaElement)?.value || '')
+          titleOk = pv.length > 0 || dv.length > 0
+          if (!titleOk) {
+            await page.evaluate((m: string) => { (window as any).__wb_debug = m }, `typed pv='${pv.slice(0,10)}' dv='${dv.slice(0,10)}'`)
+          }
         } else {
-          await page.evaluate((f: string) => { (window as any).__wb_debug = 'focus=' + f }, focusedId)
+          await page.evaluate((f: string) => { (window as any).__wb_debug = 'focus=' + f }, focused)
         }
       } catch {}
       
