@@ -1,96 +1,76 @@
 <script setup lang="ts">
-import { useEditor, EditorContent } from '@tiptap/vue-3'
-import StarterKit from '@tiptap/starter-kit'
-import Placeholder from '@tiptap/extension-placeholder'
-import { watch, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { EditorView, keymap, placeholder, lineNumbers } from '@codemirror/view'
+import { EditorState } from '@codemirror/state'
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
+import { languages } from '@codemirror/language-data'
+import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
+import { oneDark } from '@codemirror/theme-one-dark'
 import { useEditorStore } from '../stores/editor'
 
 const store = useEditorStore()
+const editorContainer = ref<HTMLDivElement>()
+let editorView: EditorView | null = null
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-const editor = useEditor({
-  content: '',
-  extensions: [
-    StarterKit,
-    Placeholder.configure({
-      placeholder: '在此输入 Markdown 内容...\n\n支持 # 标题、**加粗**、- 列表等语法',
-    }),
-  ],
-  onUpdate: ({ editor }) => {
-    const md = editor.storage.markdown?.getMarkdown?.() || editor.getText()
-    store.markdown = md
+onMounted(() => {
+  if (!editorContainer.value) return
 
-    // 防抖 500ms 自动转换
-    if (debounceTimer) clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(() => {
-      if (store.selectedPlatforms.length > 0) {
-        store.doTransform()
-      }
-    }, 500)
-  },
+  const updateListener = EditorView.updateListener.of((update) => {
+    if (update.docChanged) {
+      const text = update.state.doc.toString()
+      store.markdown = text
+      clearTimeout(debounceTimer!)
+      debounceTimer = setTimeout(() => { if (text.trim()) store.doTransform() }, 400)
+    }
+  })
+
+  editorView = new EditorView({
+    state: EditorState.create({
+      doc: store.markdown,
+      extensions: [
+        history(),
+        markdown({ base: markdownLanguage, codeLanguages: languages }),
+        oneDark,
+        lineNumbers(),
+        placeholder('Start writing...'),
+        keymap.of([...defaultKeymap, ...historyKeymap]),
+        updateListener,
+        EditorView.theme({
+          '&': { height: '100%', fontSize: '14px', backgroundColor: 'transparent' },
+          '.cm-scroller': { overflow: 'auto', fontFamily: "'JetBrains Mono', 'SF Mono', monospace", padding: '8px 0' },
+          '.cm-content': { padding: '32px 24px', lineHeight: '1.85', caretColor: '#7f77dd' },
+          '.cm-gutters': { borderRight: '1px solid rgba(255,255,255,0.04)', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.15)' },
+          '.cm-activeLine': { backgroundColor: 'rgba(127,119,221,0.04)' },
+          '.cm-cursor': { borderLeftColor: '#a8a0f0' },
+          '.cm-selectionBackground': { backgroundColor: 'rgba(127,119,221,0.2) !important' },
+        }),
+        EditorView.baseTheme({ '&.cm-editor.cm-focused': { outline: 'none' } }),
+      ],
+    }),
+    parent: editorContainer.value,
+  })
 })
 
 onBeforeUnmount(() => {
-  editor.value?.destroy()
+  clearTimeout(debounceTimer!)
+  editorView?.destroy()
 })
+
+function setContent(text: string) {
+  if (!editorView) return
+  editorView.dispatch({
+    changes: { from: 0, to: editorView.state.doc.length, insert: text },
+  })
+}
+
+defineExpose({ setContent })
 </script>
 
 <template>
-  <div class="editor-container">
-    <div class="editor-toolbar">
-      <span class="toolbar-hint">Markdown 编辑器</span>
-    </div>
-    <EditorContent :editor="editor" class="editor-content" />
-  </div>
+  <div ref="editorContainer" class="editor-wrap" />
 </template>
 
 <style scoped>
-.editor-container {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.editor-toolbar {
-  padding: 8px 16px;
-  border-bottom: 1px solid #eee;
-  background: #fafafa;
-  flex-shrink: 0;
-}
-
-.toolbar-hint {
-  font-size: 12px;
-  color: #999;
-}
-
-.editor-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px;
-}
-
-.editor-content :deep(.ProseMirror) {
-  outline: none;
-  min-height: 300px;
-  font-size: 15px;
-  line-height: 1.8;
-}
-
-.editor-content :deep(.ProseMirror p.is-editor-empty:first-child::before) {
-  content: attr(data-placeholder);
-  float: left;
-  color: #adb5bd;
-  pointer-events: none;
-  height: 0;
-}
-
-.editor-content :deep(h1) { font-size: 24px; margin-bottom: 12px; }
-.editor-content :deep(h2) { font-size: 20px; margin-bottom: 10px; }
-.editor-content :deep(h3) { font-size: 17px; margin-bottom: 8px; }
-.editor-content :deep(p) { margin-bottom: 8px; }
-.editor-content :deep(code) { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
-.editor-content :deep(pre) { background: #1a1a2e; color: #e0e0e0; padding: 16px; border-radius: 8px; overflow-x: auto; margin-bottom: 12px; }
-.editor-content :deep(pre code) { background: none; padding: 0; }
-.editor-content :deep(blockquote) { border-left: 3px solid #ddd; padding-left: 16px; color: #666; margin-bottom: 8px; }
-.editor-content :deep(ul), .editor-content :deep(ol) { padding-left: 24px; margin-bottom: 8px; }
+.editor-wrap { height: 100%; overflow: hidden; }
 </style>
