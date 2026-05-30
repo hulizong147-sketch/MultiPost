@@ -68,12 +68,18 @@ export class WeChatPublisher extends BasePublisher {
       }, content.title)
       await page.waitForTimeout(500)
 
-      // 4. 正文 — iframe execCommand
+      // 4. 正文 — iframe 内直接对 body 用 execCommand
       await page.evaluate((text: string) => {
         const f = document.querySelector('iframe') as HTMLIFrameElement | null
-        const el = f?.contentDocument?.querySelector('[contenteditable="true"]') as HTMLElement | null
-        if (el) { el.focus(); (el as any).select?.(); f!.contentDocument!.execCommand('insertText', false, text) }
-        else { (window as any).__wb_debug = 'body NOT FOUND' }
+        const doc = f?.contentDocument
+        if (doc) {
+          const el = doc.querySelector('[contenteditable="true"]') || doc.body
+          if (el) {
+            ;(el as HTMLElement).focus()
+            doc.execCommand('selectAll')
+            doc.execCommand('insertText', false, text)
+          } else { (window as any).__wb_debug = 'body el NOT FOUND' }
+        } else { (window as any).__wb_debug = 'iframe doc NOT FOUND' }
       }, content.body)
       await page.waitForTimeout(500)
 
@@ -92,7 +98,8 @@ export class WeChatPublisher extends BasePublisher {
       })
       bodyOk = await page.evaluate(() => {
         const f = document.querySelector('iframe') as HTMLIFrameElement | null
-        const el = f?.contentDocument?.querySelector('[contenteditable="true"]')
+        const doc = f?.contentDocument
+        const el = doc?.querySelector('[contenteditable="true"]') || doc?.body
         return el ? (el.textContent || '').length > 10 : false
       })
 
