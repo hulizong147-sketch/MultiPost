@@ -107,55 +107,41 @@ export class WeChatPublisher extends BasePublisher {
 
       // ====== 以下是填内容 ======
 
-      // 5. 用 JS 直接注入内容 — 不依赖 Playwright 选择器等待
+      // 5. 填入内容
       let titleOk = false, bodyOk = false, authorOk = false, saved = false
 
-      await page.evaluate((data: any) => {
-        // 标题
-        const titleEl = document.querySelector('#title') as HTMLTextAreaElement
-        if (titleEl) { titleEl.value = data.title; titleEl.dispatchEvent(new Event('input', { bubbles: true })) }
-
-        // 正文（iframe 内）
-        const f = document.querySelector('iframe') as HTMLIFrameElement
-        if (f?.contentDocument) {
-          const b = f.contentDocument.querySelector('[contenteditable="true"], body')
-          if (b) { b.textContent = data.body; b.dispatchEvent(new Event('input', { bubbles: true })) }
-        }
-
-        // 作者
-        const a = document.querySelector('#author') as HTMLInputElement
-        if (a) { a.value = data.authorName; a.dispatchEvent(new Event('input', { bubbles: true })) }
-      }, { title: content.title, body: content.body, authorName: content.title.slice(0, 8) })
-
-      // 提取 evaluate 执行结果（因为 __ 属性会挂在传入对象上）
-      // JS evaluate 不能直接返回被序列化问题影响的值，改用两次 evaluate
-      titleOk = await page.evaluate(() => {
-        const a = document.querySelector('#title') as HTMLTextAreaElement
-        return a ? a.value.length > 0 : false
-      })
-
-      bodyOk = await page.evaluate(() => {
-        const f = document.querySelector('iframe') as HTMLIFrameElement
-        if (f?.contentDocument) {
-          const b = f.contentDocument.querySelector('[contenteditable="true"], body')
-          return b ? (b.textContent || '').length > 10 : false
-        }
-        return false
-      })
-
-      authorOk = await page.evaluate(() => {
-        const a = document.querySelector('#author') as HTMLInputElement
-        return a ? a.value.length > 0 : false
-      })
-
-      // 6. 保存
+      // 标题 — Playwright fill 触发 React onChange
       try {
-        const sbtn = page.locator('#js_submit > button')
-        await sbtn.waitFor({ timeout: 5000 })
-        await sbtn.click()
+        await page.locator('#title').fill(content.title)
+        titleOk = true
+      } catch {}
+
+      // 正文 — 在 iframe 内找 contenteditable，用 Playwright API
+      try {
+        const fh = page.locator('iframe').first()
+        const frame = await fh.contentFrame()
+        if (frame) {
+          await frame.locator('[contenteditable="true"], body').first().fill(content.body)
+          bodyOk = true
+        }
+      } catch {}
+
+      // 作者 — Playwright fill
+      try {
+        await page.locator('#author').fill(content.title.slice(0, 8))
+        authorOk = true
+      } catch {}
+
+      // 验证 + 保存
+      titleOk = titleOk || await page.locator('#title').inputValue().then(v => v.length > 0).catch(() => false)
+      authorOk = authorOk || await page.locator('#author').inputValue().then(v => v.length > 0).catch(() => false)
+
+      // 保存 — 多种文字匹配
+      try {
+        await page.locator('button:has-text("保存"), button:has-text("发表"), #js_submit button').first().click({ timeout: 5000 })
         await page.waitForTimeout(2000)
         saved = true
-      } catch (e: any) { }
+      } catch {}
 
       let msg = `标题:${titleOk ? '✅' : '❌'} 正文:${bodyOk ? '✅' : '❌'} 作者:${authorOk ? '✅' : '❌'} 保存:${saved ? '✅' : '❌'}`
       msg += ' | DOM报告已存到桌面 dom-report.txt'
