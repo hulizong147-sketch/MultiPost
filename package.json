@@ -6,7 +6,8 @@
     "dev:web": "pnpm --filter @multipost/web dev",
     "dev": "pnpm run --parallel dev:api dev:web",
     "build": "pnpm -r build",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "publish:csdn": "cd apps/api && npx tsx ../../scripts/publish.ts --platform csdn"
   },
   "engines": {
     "node": ">=22"

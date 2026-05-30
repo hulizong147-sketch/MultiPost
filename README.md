@@ -65,6 +65,23 @@ pnpm --filter @multipost/web dev
 4. 点击预览卡片右上角 **复制图标** 复制该平台内容
 5. 或点 **Copy all** 一键复制所有平台内容
 
+### 全自动发布（CLI）
+
+对于 CSDN，支持真正的全自动发布（打开 Chrome → 自动填入 → 自动点击发布）：
+
+```bash
+# 在你的 Windows 终端里（不是 WorkBuddy 里）
+cd D:\MultiPost
+
+# 首次使用：先启动 Chrome 并手动登录一次
+npx tsx scripts/publish.ts --platform csdn --file ./article.md
+
+# 之后每次发布，Chrome 会自动用已保存的登录状态
+pnpm publish:csdn -- ./article.md --title "文章标题"
+```
+
+**原理**：Playwright 控制本地 Chrome，持久化用户目录保存登录 Cookie。脱离 WorkBuddy 沙箱限制，在你自己的电脑上全自动操作。
+
 ## 架构
 
 ```
