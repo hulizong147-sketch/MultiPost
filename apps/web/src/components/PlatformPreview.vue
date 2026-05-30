@@ -33,7 +33,6 @@ async function doPublish() {
     await navigator.clipboard.writeText(store.markdown)
     window.open('https://editor.csdn.net/md?not_checkout=1', '_blank')
     store.simulatePublish(props.platform, props.content.title)
-    store.simulatePublish(props.platform, props.content.title)
     published.value = true
     publishing.value = false
     setTimeout(() => (published.value = false), 2500)
@@ -65,7 +64,7 @@ async function doPublish() {
           <svg v-if="!copied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
           <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
         </button>
-        <button v-if="store.accounts[platform]?.username" class="action-btn pub" :disabled="publishing" @click="doPublish">
+        <button v-if="content" class="action-btn pub" :disabled="publishing" @click="doPublish">
           {{ publishing ? '...' : published ? 'Done' : 'Publish' }}
         </button>
       </div>
