@@ -28,18 +28,7 @@ async function doPublish() {
   if (!props.content) return
   publishing.value = true
 
-  // CSDN 特殊处理：打开编辑器 + 复制 Markdown 原文
-  if (props.platform === PlatformType.CSDN) {
-    await navigator.clipboard.writeText(store.markdown)
-    window.open('https://editor.csdn.net/md?not_checkout=1', '_blank')
-    store.simulatePublish(props.platform, props.content.title)
-    published.value = true
-    publishing.value = false
-    setTimeout(() => (published.value = false), 2500)
-    return
-  }
-
-  // 其他平台：尝试真实发布
+  // 所有平台统一走后端发布（Electron 环境下 Playwright 全自动）
   try {
     await store.realPublish(props.platform)
     published.value = true
