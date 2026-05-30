@@ -71,22 +71,20 @@ export class WeChatPublisher extends BasePublisher {
       await page.waitForTimeout(3000)
 
       // 5. 填入标题
-      let titleOk = false
+      let titleOk = false, titleErr = ''
       try {
         const el = page.locator(SEL.title).first()
         await el.waitFor({ timeout: 10000 })
         await el.click()
         await el.fill(content.title)
         titleOk = true
-        await page.waitForTimeout(500)
-      } catch (e: any) { console.log('标题失败:', e.message) }
+      } catch (e: any) { titleErr = e.message.split('\n')[0] }
 
       // 6. 填入正文 — 公众号正文在 #ueditor_0 iframe 内
-      let bodyOk = false
+      let bodyOk = false, bodyErr = ''
       try {
         const fh = page.locator(SEL.bodyFrame)
         await fh.waitFor({ timeout: 10000 })
-        // 等 iframe 完全加载
         await page.waitForTimeout(2000)
         const frame = await fh.contentFrame()
         if (frame) {
@@ -95,32 +93,36 @@ export class WeChatPublisher extends BasePublisher {
           await area.click()
           await area.type(content.body, { delay: 2 })
           bodyOk = true
-        }
-      } catch (e: any) { console.log('正文失败:', e.message) }
+        } else { bodyErr = 'iframe内容获取失败' }
+      } catch (e: any) { bodyErr = e.message.split('\n')[0] }
 
       // 7. 填入作者
-      let authorOk = false
+      let authorOk = false, authorErr = ''
       try {
         const ael = page.locator(SEL.author)
         await ael.waitFor({ timeout: 5000 })
+        await ael.click()
         await ael.fill(content.title.slice(0, 8))
         authorOk = true
-      } catch (e: any) { console.log('作者失败:', e.message) }
+      } catch (e: any) { authorErr = e.message.split('\n')[0] }
 
       // 8. 保存
-      let saved = false
+      let saved = false, saveErr = ''
       try {
         const sbtn = page.locator(SEL.save)
         await sbtn.waitFor({ timeout: 5000 })
         await sbtn.click()
         await page.waitForTimeout(2000)
         saved = true
-      } catch (e: any) { console.log('保存失败:', e.message) }
+      } catch (e: any) { saveErr = e.message.split('\n')[0] }
 
-      return {
-        success: true, platform: PlatformType.WECHAT_MP,
-        message: `标题:${titleOk ? '✅' : '❌'} 正文:${bodyOk ? '✅' : '❌'} 作者:${authorOk ? '✅' : '❌'} 保存:${saved ? '✅' : '❌'}，请检查浏览器`,
-      }
+      let msg = `标题:${titleOk ? '✅' : '❌'} 正文:${bodyOk ? '✅' : '❌'} 作者:${authorOk ? '✅' : '❌'} 保存:${saved ? '✅' : '❌'}`
+      if (!titleOk) msg += ` | 标题:${titleErr}`
+      if (!bodyOk) msg += ` | 正文:${bodyErr}`
+      if (!authorOk) msg += ` | 作者:${authorErr}`
+      if (!saved) msg += ` | 保存:${saveErr}`
+      msg += '。请检查浏览器'
+      return { success: true, platform: PlatformType.WECHAT_MP, message: msg }
     } catch (err: any) {
       return { success: false, platform: PlatformType.WECHAT_MP, message: `异常: ${err.message}` }
     }
