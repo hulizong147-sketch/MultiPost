@@ -9,6 +9,7 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
     },
   },
+  cacheDir: '../.vite-cache',
   server: {
     port: 5173,
     proxy: {

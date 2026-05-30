@@ -4,10 +4,12 @@ import EditorPanel from './components/EditorPanel.vue'
 import PlatformSelector from './components/PlatformSelector.vue'
 import PreviewGrid from './components/PreviewGrid.vue'
 import TransformButton from './components/TransformButton.vue'
+import AccountModal from './components/AccountModal.vue'
 import { useEditorStore } from './stores/editor'
 
 const store = useEditorStore()
 const editorRef = ref<InstanceType<typeof EditorPanel> | null>(null)
+const showAccount = ref(false)
 </script>
 
 <template>
@@ -25,6 +27,8 @@ const editorRef = ref<InstanceType<typeof EditorPanel> | null>(null)
         </div>
       </div>
       <div class="header-actions">
+        <button class="ghost-btn" @click="showAccount = true">Account</button>
+        <span class="divider" />
         <button class="ghost-btn" @click="store.loadSample(editorRef)">Sample</button>
         <span class="divider" />
         <PlatformSelector />
@@ -47,6 +51,7 @@ const editorRef = ref<InstanceType<typeof EditorPanel> | null>(null)
         <PreviewGrid v-else />
       </section>
     </main>
+    <AccountModal v-if="showAccount" @close="showAccount = false" />
   </div>
 </template>
 

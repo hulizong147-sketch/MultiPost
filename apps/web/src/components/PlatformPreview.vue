@@ -2,13 +2,17 @@
 import { computed, ref } from 'vue'
 import { PlatformType, PLATFORM_CONSTRAINTS } from '@multipost/shared'
 import type { PlatformContent } from '@multipost/shared'
+import { useEditorStore } from '../stores/editor'
 
 const props = defineProps<{
   platform: PlatformType
   content: PlatformContent | undefined
 }>()
 
+const store = useEditorStore()
 const copied = ref(false)
+const publishing = ref(false)
+const published = ref(false)
 const config = computed(() => PLATFORM_CONSTRAINTS[props.platform])
 
 const meta: Record<string, { color: string; gradient: string }> = {
@@ -23,6 +27,16 @@ function copyContent() {
   if (!props.content) return
   const text = [props.content.title, '', props.content.body, '', props.content.tags.map(t => `#${t}`).join(' ')].join('\n')
   navigator.clipboard.writeText(text).then(() => { copied.value = true; setTimeout(() => (copied.value = false), 2000) })
+}
+
+async function doPublish() {
+  if (!props.content) return
+  publishing.value = true
+  await new Promise(r => setTimeout(r, 600))
+  store.simulatePublish(props.platform, props.content.title)
+  published.value = true
+  publishing.value = false
+  setTimeout(() => (published.value = false), 2500)
 }
 </script>
 
@@ -39,6 +53,7 @@ function copyContent() {
           <svg v-if="!copied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
           <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
         </button>
+        <button v-if="store.accounts[platform]?.username" class="pub-btn" :disabled="publishing" @click="doPublish">{{ publishing ? '...' : published ? 'Done' : 'Publish' }}</button>
       </div>
     </div>
 
@@ -82,6 +97,14 @@ function copyContent() {
 }
 .copy-btn:hover { border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); }
 .copy-btn.copied { border-color: rgba(29,158,117,0.3); color: #5dcf8a; }
+
+.pub-btn {
+  padding: 4px 12px; border: 1px solid rgba(127,119,221,0.3); border-radius: 6px;
+  background: rgba(127,119,221,0.1); color: #a8a0f0; font-size: 11px; cursor: pointer;
+  font-family: 'Inter', sans-serif; transition: all 0.2s;
+}
+.pub-btn:hover:not(:disabled) { background: rgba(127,119,221,0.2); }
+.pub-btn:disabled { opacity: 0.4; }
 
 .empty { padding: 40px 14px; text-align: center; color: rgba(255,255,255,0.1); font-size: 12px; }
 

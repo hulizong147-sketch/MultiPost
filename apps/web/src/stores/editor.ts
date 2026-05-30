@@ -43,6 +43,8 @@ export const useEditorStore = defineStore('editor', () => {
   const results = ref<Record<string, PlatformContent>>({})
   const isLoading = ref(false)
   const error = ref('')
+  const accounts = ref<Record<string, { username: string; accessKey: string }>>({})
+  const publishHistory = ref<{ platform: string; user: string; title: string; time: string }[]>([])
 
   const platforms = [
     { type: PlatformType.WECHAT_MP, label: '公众号' },
@@ -85,6 +87,29 @@ export const useEditorStore = defineStore('editor', () => {
     navigator.clipboard.writeText(texts.join('\n'))
   }
 
-  return { markdown, selectedPlatforms, results, isLoading, error, platforms,
-    loadSample, togglePlatform, doTransform, copyAll }
+  // 从 localStorage 加载账号
+  try {
+    const saved = localStorage.getItem('multipost_accounts')
+    if (saved) accounts.value = JSON.parse(saved)
+  } catch {}
+
+  function saveAccount(platform: string, username: string, accessKey: string) {
+    accounts.value[platform] = { username, accessKey }
+    localStorage.setItem('multipost_accounts', JSON.stringify(accounts.value))
+  }
+
+  function removeAccount(platform: string) {
+    delete accounts.value[platform]
+    localStorage.setItem('multipost_accounts', JSON.stringify(accounts.value))
+  }
+
+  function simulatePublish(platform: string, title: string) {
+    const name = platforms.find(p => p.type === platform)?.label || platform
+    const user = accounts.value[platform]?.username || '未设置账号'
+    publishHistory.value.unshift({ platform: name, user, title, time: new Date().toLocaleString('zh-CN') })
+    if (publishHistory.value.length > 50) publishHistory.value.pop()
+  }
+
+  return { markdown, selectedPlatforms, results, isLoading, error, platforms, accounts, publishHistory,
+    loadSample, togglePlatform, doTransform, copyAll, saveAccount, removeAccount, simulatePublish }
 })
