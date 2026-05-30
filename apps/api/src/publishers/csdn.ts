@@ -92,8 +92,7 @@ export class CSDNPublisher extends BasePublisher {
         message: finalUrl.includes('article') ? `发布成功！${finalUrl}` : '发布完成',
       }
     } catch (err: any) {
-      if (browser) try { await browser.close() } catch {}
-      return { success: false, platform: PlatformType.CSDN, message: `发布异常: ${err.message}` }
+            return { success: false, platform: PlatformType.CSDN, message: `发布异常: ${err.message}` }
     }
   }
 

@@ -94,8 +94,7 @@ export class ToutiaoPublisher extends BasePublisher {
         message: `发布完成，请到头条号确认`,
       }
     } catch (err: any) {
-      if (browser) try { await browser.close() } catch {}
-      return { success: false, platform: PlatformType.TOUTIAO, message: `头条发布异常: ${err.message}` }
+            return { success: false, platform: PlatformType.TOUTIAO, message: `头条发布异常: ${err.message}` }
     }
   }
 }

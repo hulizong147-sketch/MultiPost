@@ -94,8 +94,7 @@ export class ZhihuPublisher extends BasePublisher {
         message: finalUrl.includes('zhuanlan') && finalUrl.includes('p/') ? `发布成功！${finalUrl}` : '发布完成，请到知乎确认',
       }
     } catch (err: any) {
-      if (browser) try { await browser.close() } catch {}
-      return { success: false, platform: PlatformType.ZHIHU, message: `知乎发布异常: ${err.message}` }
+            return { success: false, platform: PlatformType.ZHIHU, message: `知乎发布异常: ${err.message}` }
     }
   }
 }

@@ -99,8 +99,7 @@ export class XiaohongshuPublisher extends BasePublisher {
         message: `小红书发布完成`,
       }
     } catch (err: any) {
-      if (browser) try { await browser.close() } catch {}
-      return { success: false, platform: PlatformType.XIAOHONGSHU, message: `小红书发布异常: ${err.message}` }
+            return { success: false, platform: PlatformType.XIAOHONGSHU, message: `小红书发布异常: ${err.message}` }
     }
   }
 }

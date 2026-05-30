@@ -117,8 +117,7 @@ export class BilibiliPublisher extends BasePublisher {
         message: finalUrl.includes('article') || finalUrl.includes('read') ? `发布成功！${finalUrl}` : '发布完成，请到 B站 确认',
       }
     } catch (err: any) {
-      if (browser) try { await browser.close() } catch {}
-      return { success: false, platform: PlatformType.BILIBILI, message: `B站发布异常: ${err.message}` }
+            return { success: false, platform: PlatformType.BILIBILI, message: `B站发布异常: ${err.message}` }
     }
   }
 }
