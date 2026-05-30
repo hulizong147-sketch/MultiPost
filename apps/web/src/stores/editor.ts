@@ -69,8 +69,10 @@ export const useEditorStore = defineStore('editor', () => {
   async function doTransform() {
     if (!markdown.value.trim() || selectedPlatforms.value.length === 0) return
     isLoading.value = true; error.value = ''
+    // 裁掉 base64 大图数据，避免请求体过大导致后端崩溃
+    const cleanMd = markdown.value.replace(/!\[([^\]]*)\]\(data:image\/[^)]+\)/g, '![$1（图片已省略）]()')
     try {
-      const res = await transformContent({ markdown: markdown.value, platforms: selectedPlatforms.value })
+      const res = await transformContent({ markdown: cleanMd, platforms: selectedPlatforms.value })
       results.value = res.results
     } catch (e: any) { error.value = e.message || '转换失败' }
     finally { isLoading.value = false }
