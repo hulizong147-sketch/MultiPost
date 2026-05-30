@@ -26,6 +26,19 @@ export interface PublishResult {
 export abstract class BasePublisher {
   abstract readonly platformType: PlatformType
 
+  /** Chrome 启动参数 — 加速启动、去干扰 */
+  protected static readonly CHROME_ARGS = [
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--disable-extensions',
+    '--disable-sync',
+    '--disable-background-networking',
+    '--disable-default-apps',
+    '--disable-component-extensions-with-background-pages',
+    '--disable-features=TranslateUI',
+    '--test-type',  // 去除 --no-sandbox 警告
+  ]
+
   /**
    * 执行发布
    */

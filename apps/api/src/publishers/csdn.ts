@@ -21,6 +21,7 @@ export class CSDNPublisher extends BasePublisher {
         headless: false,
         executablePath: CHROME_PATH,
         viewport: { width: 1280, height: 900 },
+        args: BasePublisher.CHROME_ARGS,
       })
 
       const page = browser.pages()[0]
@@ -103,6 +104,7 @@ export class CSDNPublisher extends BasePublisher {
       headless: false,
       executablePath: CHROME_PATH,
       viewport: { width: 1280, height: 900 },
+      args: BasePublisher.CHROME_ARGS,
     })
     await browser.pages()[0]
     console.log('CSDN 登录窗口已打开，请在 Chrome 中完成登录')

@@ -26,6 +26,7 @@ export class WeChatPublisher extends BasePublisher {
         headless: false,
         executablePath: CHROME_PATH,
         viewport: { width: 1280, height: 900 },
+        args: BasePublisher.CHROME_ARGS,
       })
 
       // 使用 launcher 已创建的 page，不再 newPage()

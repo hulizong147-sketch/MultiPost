@@ -28,6 +28,7 @@ export class BilibiliPublisher extends BasePublisher {
         headless: false,
         executablePath: CHROME_PATH,
         viewport: { width: 1280, height: 900 },
+        args: BasePublisher.CHROME_ARGS,
       })
       const page = browser.pages()[0]
 
