@@ -85,8 +85,11 @@ export class WeChatPublisher extends BasePublisher {
         for (const f of frames) {
           report.push(`iframe#${f.id || '(无id)'}`)
         }
-        return report.join(' | ') || '(未找到可编辑元素)'
+        return report.join('\n') || '(未找到可编辑元素)'
       })
+      // 同时写入桌面文件
+      const fs = await import('fs')
+      fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'dom-report.txt'), domReport, 'utf-8')
 
       // ====== 以下是填内容 ======
 
@@ -156,7 +159,8 @@ export class WeChatPublisher extends BasePublisher {
         saved = true
       } catch (e: any) { }
 
-      let msg = `${domReport} | 标题:${titleOk ? '✅' : '❌'} 正文:${bodyOk ? '✅' : '❌'} 作者:${authorOk ? '✅' : '❌'} 保存:${saved ? '✅' : '❌'}`
+      let msg = `标题:${titleOk ? '✅' : '❌'} 正文:${bodyOk ? '✅' : '❌'} 作者:${authorOk ? '✅' : '❌'} 保存:${saved ? '✅' : '❌'}`
+      msg += ' | DOM报告已存到桌面 dom-report.txt'
       msg += '。请检查浏览器'
       return { success: true, platform: PlatformType.WECHAT_MP, message: msg }
     } catch (err: any) {
