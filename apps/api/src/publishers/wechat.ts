@@ -59,50 +59,32 @@ export class WeChatPublisher extends BasePublisher {
 
       let titleOk = false, bodyOk = false, saved = false
 
-      // 3. 标题 — 原生 value setter 绕过 React 劫持
+      // 3. 标题 — execCommand 模拟真实输入
       await page.evaluate((text: string) => {
-        const el = document.querySelector('#title')
-        if (el) {
-          const setter = Object.getOwnPropertyDescriptor(
-            window.HTMLTextAreaElement.prototype, 'value'
-          )!.set!
-          setter.call(el, text)
-          el.dispatchEvent(new Event('input', { bubbles: true }))
-          el.dispatchEvent(new Event('change', { bubbles: true }))
-        }
+        const el = document.querySelector('#title') as HTMLElement | null
+        if (el) { el.focus(); (el as any).select?.(); document.execCommand('insertText', false, text) }
+        else { (window as any).__wb_debug = 'title NOT FOUND' }
       }, content.title)
-      await page.waitForTimeout(300)
+      await page.waitForTimeout(500)
 
-      // 4. 正文 — 原生 innerText setter
+      // 4. 正文 — iframe execCommand
       await page.evaluate((text: string) => {
         const f = document.querySelector('iframe') as HTMLIFrameElement | null
         const el = f?.contentDocument?.querySelector('[contenteditable="true"]') as HTMLElement | null
-        if (el) {
-          el.focus()
-          const setter = Object.getOwnPropertyDescriptor(
-            window.HTMLElement.prototype, 'innerText'
-          )!.set!
-          setter.call(el, text)
-          el.dispatchEvent(new Event('input', { bubbles: true }))
-          el.blur()
-        }
+        if (el) { el.focus(); (el as any).select?.(); f!.contentDocument!.execCommand('insertText', false, text) }
+        else { (window as any).__wb_debug = 'body NOT FOUND' }
       }, content.body)
-      await page.waitForTimeout(300)
+      await page.waitForTimeout(500)
 
       // 5. 作者
       await page.evaluate((text: string) => {
-        const el = document.querySelector('#author') as HTMLInputElement | null
-        if (el) {
-          const setter = Object.getOwnPropertyDescriptor(
-            window.HTMLInputElement.prototype, 'value'
-          )!.set!
-          setter.call(el, text)
-          el.dispatchEvent(new Event('input', { bubbles: true }))
-        }
+        const el = document.querySelector('#author') as HTMLElement | null
+        if (el) { el.focus(); (el as any).select?.(); document.execCommand('insertText', false, text) }
       }, content.title.slice(0, 8))
       await page.waitForTimeout(300)
 
       // 验证
+      const debug = await page.evaluate(() => (window as any).__wb_debug || '')
       titleOk = await page.evaluate(() => {
         const el = document.querySelector('#title') as HTMLTextAreaElement | null
         return el ? el.value.length > 0 : false
@@ -122,7 +104,7 @@ export class WeChatPublisher extends BasePublisher {
         } catch {}
       }
 
-      return { success: true, platform: PlatformType.WECHAT_MP, message: `标题[${titleOk?'✅':'❌'}] 正文[${bodyOk?'✅':'❌'}] 保存[${saved?'✅':'❌'}] | 截图:桌面/wechat-debug.png` }
+      return { success: true, platform: PlatformType.WECHAT_MP, message: `${debug ? 'DBG:' + debug + ' | ' : ''}标题[${titleOk?'✅':'❌'}] 正文[${bodyOk?'✅':'❌'}] 保存[${saved?'✅':'❌'}]` }
     } catch (err: any) {
       return { success: false, platform: PlatformType.WECHAT_MP, message: `异常: ${err.message}` }
     }
