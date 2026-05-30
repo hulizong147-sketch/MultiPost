@@ -55,7 +55,6 @@ export abstract class BasePublisher {
     }
     return false
   }
-  }
 
   async checkLogin(): Promise<boolean> {
     return false
