@@ -111,36 +111,20 @@ export class WeChatPublisher extends BasePublisher {
       let titleOk = false, bodyOk = false, authorOk = false, saved = false
 
       await page.evaluate((data: any) => {
-        // 标题：找 #js_title_main 下的可编辑元素
-        const titleArea = document.querySelector('#title')
-        if (titleArea) {
-          const input = titleArea.querySelector('input, textarea, [contenteditable="true"]') as HTMLElement
-          if (input) {
-            if ('value' in input) (input as any).value = data.title
-            else input.textContent = data.title
-            input.dispatchEvent(new Event('input', { bubbles: true }))
-            data.__titleOk = true
-          }
-        }
+        // 标题
+        const titleEl = document.querySelector('#title') as HTMLTextAreaElement
+        if (titleEl) { titleEl.value = data.title; titleEl.dispatchEvent(new Event('input', { bubbles: true })) }
 
-        // 正文：进入页面唯一 iframe
-        const fh = page.locator('iframe').first()
-        if (await fh.count() > 0) {
-          const frame = await fh.contentFrame()
-          if (frame) {
-            const body = frame.locator('[contenteditable="true"], body').first()
-            body.textContent = data.body
-            data.__bodyOk = true
-          }
+        // 正文（iframe 内）
+        const f = document.querySelector('iframe') as HTMLIFrameElement
+        if (f?.contentDocument) {
+          const b = f.contentDocument.querySelector('[contenteditable="true"], body')
+          if (b) { b.textContent = data.body; b.dispatchEvent(new Event('input', { bubbles: true })) }
         }
 
         // 作者
-        const authorInput = document.querySelector('#author') as HTMLInputElement
-        if (authorInput) {
-          authorInput.value = data.authorName
-          authorInput.dispatchEvent(new Event('input', { bubbles: true }))
-          data.__authorOk = true
-        }
+        const a = document.querySelector('#author') as HTMLInputElement
+        if (a) { a.value = data.authorName; a.dispatchEvent(new Event('input', { bubbles: true })) }
       }, { title: content.title, body: content.body, authorName: content.title.slice(0, 8) })
 
       // 提取 evaluate 执行结果（因为 __ 属性会挂在传入对象上）
