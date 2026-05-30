@@ -2,7 +2,7 @@
   "name": "@multipost/electron",
   "version": "1.0.0",
   "private": true,
-  "main": "main.js",
+  "main": "main.ts",
   "scripts": {
     "dev": "tsx main.ts",
     "build": "tsc"
