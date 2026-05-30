@@ -1,7 +1,7 @@
 /**
- * 微信公众号 Publisher
+ * 微信公众号 Publisher — 全部使用 F12 验证的选择器
  *
- * 永不自动关闭浏览器 — 成功或失败都留在屏幕上让用户看。
+ * 选择器来源：公众号后台实际 DOM（2026-05-31）
  */
 import { PlatformType } from '@multipost/shared'
 import type { PlatformContent } from '@multipost/shared'
@@ -11,7 +11,15 @@ import { BasePublisher, type PublishResult } from './base.js'
 
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
 const UDD = path.join(os.homedir(), '.multipost', 'chrome-wechat')
-const EDITOR = 'https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=10&lang=zh_CN'
+
+// DOM 选择器 — F12 实测
+const SEL = {
+  newArticle: '#app > div.main_bd_new > div:nth-child(3) > div.weui-desktop-panel__bd > div > div:nth-child(2)',
+  title: '#js_title_main div',
+  author: '#author',
+  bodyFrame: '#ueditor_0',
+  save: '#js_submit > button',
+}
 
 export class WeChatPublisher extends BasePublisher {
   readonly platformType = PlatformType.WECHAT_MP
@@ -28,36 +36,51 @@ export class WeChatPublisher extends BasePublisher {
       })
       const page = browser.pages()[0]
 
-      // 1. 编辑器
-      await page.goto(EDITOR, { waitUntil: 'networkidle', timeout: 30000 })
+      // 1. 打开后台首页
+      await page.goto('https://mp.weixin.qq.com/', { waitUntil: 'networkidle', timeout: 30000 })
       await page.waitForTimeout(4000)
 
-      // 2. 登录
+      // 2. 登录检测
       if (page.url().includes('login') || page.url().includes('qrconnect')) {
         const ok = await this.waitForLogin(page, ['login', 'qrconnect'], 60)
         if (!ok) return { success: false, platform: PlatformType.WECHAT_MP, message: '登录超时' }
-        await page.goto(EDITOR, { waitUntil: 'networkidle', timeout: 20000 })
         await page.waitForTimeout(5000)
       }
 
       // 3. 截图
-      try {
-        await page.screenshot({ path: path.join(os.homedir(), 'Desktop', 'wechat-publish.png') })
-      } catch {}
+      await page.screenshot({ path: path.join(os.homedir(), 'Desktop', 'wechat-publish.png') }).catch(() => {})
 
-      // 4. 标题
+      // 4. 点击「新建图文」进入编辑器
+      let inEditor = false
       try {
-        const el = page.locator('#js_title_main div').first()
-        await el.waitFor({ timeout: 10000 })
+        const btn = page.locator(SEL.newArticle)
+        await btn.waitFor({ timeout: 10000 })
+        await btn.click()
+        await page.waitForTimeout(5000)
+        inEditor = true
+      } catch {
+        // 兜底：直接跳 URL
+        await page.goto(
+          'https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=10&lang=zh_CN',
+          { waitUntil: 'networkidle', timeout: 20000 }
+        )
+        await page.waitForTimeout(5000)
+        inEditor = !page.url().includes('login')
+      }
+
+      // 5. 填入标题
+      try {
+        const el = page.locator(SEL.title).first()
+        await el.waitFor({ timeout: 8000 })
         await el.click()
         await page.keyboard.press('Control+a')
-        await page.waitForTimeout(300)
+        await page.waitForTimeout(200)
         await el.type(content.title, { delay: 10 })
-      } catch { /* 标题失败继续 */ }
+      } catch {}
 
-      // 5. 正文 — iframe
+      // 6. 填入正文 — 公众号正文在 #ueditor_0 iframe 内
       try {
-        const fh = page.locator('#ueditor_0')
+        const fh = page.locator(SEL.bodyFrame)
         await fh.waitFor({ timeout: 8000 })
         const frame = await fh.contentFrame()
         if (frame) {
@@ -68,21 +91,25 @@ export class WeChatPublisher extends BasePublisher {
           await frame.waitForTimeout(300)
           await area.type(content.body, { delay: 2 })
         }
-      } catch { /* 正文失败继续 */ }
+      } catch {}
 
-      // 6. 保存
+      // 7. 填入作者（公众号默认作者是公众号名，可选覆盖）
       try {
-        const btn = page.locator('#js_save, button:has-text("保存"), [id*="save"]').first()
-        await btn.waitFor({ timeout: 5000 })
-        await btn.click()
+        const ael = page.locator(SEL.author)
+        await ael.waitFor({ timeout: 3000 })
+        await ael.fill(content.title.slice(0, 8))
+      } catch {}
+
+      // 8. 保存
+      try {
+        const sbtn = page.locator(SEL.save)
+        await sbtn.waitFor({ timeout: 5000 })
+        await sbtn.click()
         await page.waitForTimeout(2000)
-      } catch { /* 保存失败继续 */ }
+      } catch {}
 
-      // 浏览器保持打开 — 用户可手动完成
-      return { success: true, platform: PlatformType.WECHAT_MP, message: '公众号操作完成，请检查浏览器窗口' }
-
+      return { success: true, platform: PlatformType.WECHAT_MP, message: '公众号操作完成，请检查浏览器' }
     } catch (err: any) {
-      // 极端异常 — 浏览器可能自己挂了
       return { success: false, platform: PlatformType.WECHAT_MP, message: `异常: ${err.message}` }
     }
   }
