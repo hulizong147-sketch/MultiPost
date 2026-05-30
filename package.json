@@ -4,9 +4,8 @@
   "scripts": {
     "dev:api": "pnpm --filter @multipost/api dev",
     "dev:web": "pnpm --filter @multipost/web dev",
-    "dev": "pnpm run --parallel dev:api dev:web",
-    "electron:dev": "pnpm --filter @multipost/electron dev",
-    "desktop": "pnpm run --parallel dev:api dev:web electron:dev",
+    "dev": "pnpm --filter @multipost/api dev & pnpm --filter @multipost/web dev",
+    "desktop": "pnpm --filter @multipost/api dev & pnpm --filter @multipost/web dev & pnpm --filter @multipost/electron dev",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "publish:csdn": "cd apps/api && npx tsx ../../scripts/publish.ts --platform csdn"
