@@ -18,7 +18,7 @@ export class XiaohongshuPublisher extends BasePublisher {
   async publish(content: PlatformContent): Promise<PublishResult> {
     const { chromium } = await import('playwright')
     let browser: any = null
-    let log = '' // 诊断日志
+    let log = ''
 
     try {
       browser = await chromium.launchPersistentContext(USER_DATA_DIR, {
@@ -32,14 +32,13 @@ export class XiaohongshuPublisher extends BasePublisher {
       await page.waitForTimeout(3000)
       log += 'NAV '
 
-      // 登录
       if (page.url().includes('login') || page.url().includes('signin')) {
-        console.log('🔄 请在浏览器中登录小红书...')
+        console.log('\u{1F504} 请在浏览器中登录小红书...')
         const loggedIn = await this.waitForLogin(page, ['login', 'signin'], 120)
         if (!loggedIn) {
           fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'xhs-log.txt'), log + 'LOGIN_TIMEOUT', 'utf-8')
           await browser.close()
-          return { success: false, platform: PlatformType.XIAOHONGSHU, message: '小红书登录超时' }
+          return { success: false, platform: PlatformType.XIAOHONGSHU, message: '登录超时' }
         }
         await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 20000 })
         await page.waitForTimeout(3000)
@@ -48,11 +47,26 @@ export class XiaohongshuPublisher extends BasePublisher {
 
       // 切换图文模式
       try {
-        const imgTextSel = '#web > div > div > div > div.header > div.header-tabs > div:nth-child(5)'
-        await page.locator(imgTextSel).click({ timeout: 5000 })
+        const tab = '#web > div > div > div > div.header > div.header-tabs > div:nth-child(5)'
+        await page.locator(tab).click({ timeout: 5000 })
         log += 'TAB '
         await page.waitForTimeout(1000)
-      } catch (e: any) { log += 'TAB_ERR:' + (e.message||'').slice(0,30) + ' ' }
+      } catch (e: any) { log += 'TAB_ERR:' + (e.message||'').slice(0,20) + ' ' }
+
+      // 封面 — 点上传区域 + filechooser
+      try {
+        const imgDir = path.join(os.homedir(), '.multipost', 'images')
+        const files = fs.readdirSync(imgDir).filter((f: string) => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
+        if (files.length > 0) {
+          const fp = path.join(imgDir, files[0])
+          const sel = '#web > div > div > div > div.upload-content.hasBannerHeight > div.upload-wrapper > div > div'
+          await page.locator(sel).click({ timeout: 5000 })
+          await page.waitForTimeout(500)
+          await page.locator('input[type="file"]').first().setInputFiles(fp, { timeout: 5000 })
+          log += 'COVER '
+          await page.waitForTimeout(2000)
+        }
+      } catch (e: any) { log += 'COV_ERR:' + (e.message||'').slice(0,20) + ' ' }
 
       // 标题
       try {
@@ -60,43 +74,27 @@ export class XiaohongshuPublisher extends BasePublisher {
         await t.waitFor({ timeout: 10000 })
         await t.fill(content.title.slice(0, 20))
         log += 'TITLE '
-      } catch (e: any) { log += 'TITLE_ERR:' + (e.message||'').slice(0,30) + ' ' }
+      } catch (e: any) { log += 'TIT_ERR:' + (e.message||'').slice(0,20) + ' ' }
 
-      // 正文 — 找到 contenteditable 并 Ctrl+V
+      // 正文 — Ctrl+V
       try {
         const el = page.locator('[contenteditable="true"]').first()
         await el.waitFor({ timeout: 10000 })
         await el.click()
         await page.waitForTimeout(500)
-        // 复制到剪贴板
         await page.evaluate((html: string) => {
-          const div = document.createElement('div')
-          div.contentEditable = 'true'; div.innerHTML = html
-          div.style.cssText = 'position:fixed;left:-9999px'
-          document.body.appendChild(div)
-          div.focus(); document.execCommand('selectAll'); document.execCommand('copy')
-          document.body.removeChild(div)
+          const d = document.createElement('div'); d.contentEditable = 'true'; d.innerHTML = html
+          d.style.cssText = 'position:fixed;left:-9999px'
+          document.body.appendChild(d); d.focus()
+          document.execCommand('selectAll'); document.execCommand('copy')
+          document.body.removeChild(d)
         }, content.body)
         await page.waitForTimeout(300)
         await el.click()
         await page.keyboard.press('Control+v')
         log += 'BODY '
         await page.waitForTimeout(2000)
-      } catch (e: any) { log += 'BODY_ERR:' + (e.message||'').slice(0,30) + ' ' }
-
-      // 封面图 — 上传项目图片
-      try {
-        const imgDir = path.join(os.homedir(), '.multipost', 'images')
-        const files = fs.readdirSync(imgDir).filter(f => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
-        if (files.length > 0) {
-          // 滚到底部
-          await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
-          await page.waitForTimeout(1000)
-          await page.locator('input[type="file"]').first().setInputFiles(path.join(imgDir, files[0]), { timeout: 5000 })
-          log += 'COVER '
-          await page.waitForTimeout(2000)
-        }
-      } catch (e: any) { log += 'COVER_ERR:' + (e.message||'').slice(0,30) + ' ' }
+      } catch (e: any) { log += 'BOD_ERR:' + (e.message||'').slice(0,20) + ' ' }
 
       // 发布
       try {
@@ -105,20 +103,19 @@ export class XiaohongshuPublisher extends BasePublisher {
         await btn.click()
         log += 'PUB '
         await page.waitForTimeout(3000)
-        // 确认弹窗
         try { await page.locator('button:has-text("确定"), button:has-text("确认")').first().click({ timeout: 5000 }); log += 'CONFIRM ' } catch {}
-      } catch (e: any) { log += 'PUB_ERR:' + (e.message||'').slice(0,30) + ' ' }
+      } catch (e: any) { log += 'PUB_ERR:' + (e.message||'').slice(0,20) + ' ' }
 
       await page.waitForTimeout(3000)
-      const finalUrl = page.url()
+      const url = page.url()
       await browser.close()
-      log += 'DONE URL=' + finalUrl.slice(0, 60)
+      log += 'DONE'
 
       fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'xhs-log.txt'), log, 'utf-8')
-      return { success: true, platform: PlatformType.XIAOHONGSHU, url: finalUrl, message: '小红书发布完成' }
+      return { success: true, platform: PlatformType.XIAOHONGSHU, url, message: '发布完成' }
     } catch (err: any) {
       fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'xhs-log.txt'), log + ' FATAL:' + (err.message||'').slice(0,80), 'utf-8')
-      return { success: false, platform: PlatformType.XIAOHONGSHU, message: `小红书异常: ${err.message}` }
+      return { success: false, platform: PlatformType.XIAOHONGSHU, message: `异常: ${err.message}` }
     }
   }
 }
