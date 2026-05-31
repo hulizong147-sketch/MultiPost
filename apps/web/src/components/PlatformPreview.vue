@@ -3,9 +3,11 @@ import { computed, ref } from 'vue'
 import { PlatformType, PLATFORM_CONSTRAINTS } from '@multipost/shared'
 import type { PlatformContent } from '@multipost/shared'
 import { useEditorStore } from '../stores/editor'
+import { useImageStore } from '../stores/images'
 
 const props = defineProps<{ platform: PlatformType; content: PlatformContent | undefined }>()
 const store = useEditorStore()
+const imgStore = useImageStore()
 const copied = ref(false)
 const publishing = ref(false)
 const published = ref(false)
@@ -17,6 +19,8 @@ const isXhs = computed(() => props.platform === PlatformType.XIAOHONGSHU)
 const isBili = computed(() => props.platform === PlatformType.BILIBILI)
 const isToutiao = computed(() => props.platform === PlatformType.TOUTIAO)
 const isCsdn = computed(() => props.platform === PlatformType.CSDN)
+
+const coverImage = computed(() => imgStore.images[0]?.url || '')
 
 function copyContent() {
   if (!props.content) return
@@ -121,6 +125,7 @@ async function doPublish() {
         </div>
         <!-- 图片区 -->
         <div class="xhs-image">
+          <img v-if="coverImage" :src="coverImage" class="xhs-cover-img" />
           <div class="xhs-imgdots">
             <span class="dot active" /><span class="dot" /><span class="dot" />
           </div>
@@ -280,7 +285,8 @@ async function doPublish() {
 .xhs-follow { padding: 3px 12px; border: none; border-radius: 20px; background: #ff2e63; color: #fff; font-size: 10px; font-weight: 500; cursor: pointer; }
 .xhs-share { font-size: 18px; color: #666; cursor: pointer; margin-left: auto; }
 
-.xhs-image { position: relative; height: 260px; background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 50%, #fbc2eb 100%); }
+.xhs-image { position: relative; height: 260px; background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 50%, #fbc2eb 100%); overflow: hidden; }
+.xhs-cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .xhs-imgdots { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; }
 .xhs-imgdots .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.5); }
 .xhs-imgdots .dot.active { background: #ff2e63; box-shadow: 0 0 0 3px rgba(255,46,99,0.15); }
