@@ -54,22 +54,15 @@ export class ZhihuPublisher extends BasePublisher {
         await t.fill(content.title)
       } catch {}
 
-      // 填入正文 — 先截图看页面结构
-      let bodyFilled = false
-      try {
-        await page.screenshot({ path: path.join(os.homedir(), 'Desktop', 'zhihu.png'), fullPage: false })
-        // 列出所有 contenteditable
-        const info = await page.evaluate(() => {
-          const els = document.querySelectorAll('[contenteditable="true"]')
-          return Array.from(els).slice(0, 5).map(e => e.className || e.tagName)
-        })
-        fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'zhihu-editors.txt'), JSON.stringify(info), 'utf-8')
-      } catch {}
-      if (!bodyFilled) {
-        await browser.close()
-        return { success: false, platform: PlatformType.ZHIHU, message: '未找到知乎正文编辑区，页面结构可能已变更' }
-      }
-
+      // 填入正文 — public-DraftEditor-content（已验证存在）
+      const bodyEl = page.locator('.public-DraftEditor-content').first()
+      await bodyEl.waitFor({ timeout: 10000 })
+      await bodyEl.click()
+      await page.evaluate((html: string) => {
+        const el = document.querySelector('.public-DraftEditor-content') as HTMLElement
+        if (el) { el.innerHTML = html; el.dispatchEvent(new Event('input', { bubbles: true })) }
+      }, content.body)
+      await page.waitForTimeout(1000)
       await page.waitForTimeout(1000)
 
       // 点击发布
