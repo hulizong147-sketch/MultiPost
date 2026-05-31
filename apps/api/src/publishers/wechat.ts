@@ -113,7 +113,13 @@ export class WeChatPublisher extends BasePublisher {
             }
           } catch (e: any) { cLog += ' NXT=ERR:' + (e.message||'').slice(0,30) }
           await page.waitForTimeout(2000)
-          try { await page.locator('button:has-text("完成")').click({ timeout: 3000 }); cLog += ' DONE' } catch {}
+          // 确认按钮
+          try {
+            const okBtn = '#vue_app > mp-image-product-dialog > div > div.weui-desktop-dialog__wrp > div > div.weui-desktop-dialog__ft > div:nth-child(2) > button'
+            const cnt = await page.locator(okBtn).count()
+            cLog += ' OK_COUNT=' + cnt
+            if (cnt > 0) { await page.locator(okBtn).click({ timeout: 5000 }); cLog += ' OK=YES' }
+          } catch (e: any) { cLog += ' OK=ERR:' + (e.message||'').slice(0,30) }
         }
       } catch (e: any) { cLog = 'ERR:' + (e?.message||'').slice(0,80) }
       fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'cover-log.txt'), cLog, 'utf-8')
