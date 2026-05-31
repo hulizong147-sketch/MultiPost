@@ -124,7 +124,8 @@ export class WeChatPublisher extends BasePublisher {
         const files = fs.readdirSync(imgDir2).filter((f: string) => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
         if (files.length > 0) {
           const fp = path.join(imgDir2, files[0])
-          const coverSel = '#js_cover_area > div.js_cover_preview_new.select-cover__preview'
+          // 点击「拖拽或选择封面」区域（中间带 + 的框）
+          const coverSel = 'text=拖拽或选择封面'
           const [chooser] = await Promise.all([
             page.waitForEvent('filechooser', { timeout: 8000 }),
             page.locator(coverSel).click({ timeout: 5000 }),
