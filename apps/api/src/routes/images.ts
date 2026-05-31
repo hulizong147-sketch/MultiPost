@@ -17,7 +17,7 @@ interface ImageInfo {
 
 export async function imageRoutes(app: FastifyInstance) {
   // 列表
-  app.get('/api/images/list', async () => {
+  app.get('/images/list', async () => {
     const files = fs.readdirSync(IMG_DIR).filter(f => /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(f))
     return {
       images: files.map(f => {
@@ -26,7 +26,7 @@ export async function imageRoutes(app: FastifyInstance) {
         return {
           id: f,
           name: f,
-          url: `/api/images/file/${f}`,
+          url: `/images/file/${f}`,
           size: stat.size,
           createdAt: stat.birthtime.toISOString(),
         } as ImageInfo
@@ -35,7 +35,7 @@ export async function imageRoutes(app: FastifyInstance) {
   })
 
   // 上传 (base64)
-  app.post('/api/images/upload', async (request, reply) => {
+  app.post('/images/upload', async (request, reply) => {
     const { name, data } = request.body as { name: string; data: string }
     if (!data) return reply.status(400).send({ error: '没有文件数据' })
 
@@ -46,11 +46,11 @@ export async function imageRoutes(app: FastifyInstance) {
     const buf = Buffer.from(data.replace(/^data:image\/\w+;base64,/, ''), 'base64')
     fs.writeFileSync(fp, buf)
 
-    return { id, name, url: `/api/images/file/${id}`, size: buf.length }
+    return { id, name, url: `/images/file/${id}`, size: buf.length }
   })
 
   // 删除
-  app.delete('/api/images/:id', async (request, reply) => {
+  app.delete('/images/:id', async (request, reply) => {
     const { id } = request.params as { id: string }
     const fp = path.join(IMG_DIR, id)
     if (!fs.existsSync(fp)) return reply.status(404).send({ error: '文件不存在' })
@@ -59,7 +59,7 @@ export async function imageRoutes(app: FastifyInstance) {
   })
 
   // 文件读取
-  app.get('/api/images/file/:id', async (request, reply) => {
+  app.get('/images/file/:id', async (request, reply) => {
     const { id } = request.params as { id: string }
     const fp = path.join(IMG_DIR, id)
     if (!fs.existsSync(fp)) return reply.status(404).send({ error: '文件不存在' })
