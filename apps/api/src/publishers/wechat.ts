@@ -118,21 +118,22 @@ export class WeChatPublisher extends BasePublisher {
       // 5. 作者
       try { await page.locator('#author').fill(content.title.slice(0, 8), { timeout: 3000 }) } catch {}
 
-      // 6. 封面
-      // 如果有存储图片，点击封面区域上传
+      // 6. 封面 — 用 filechooser 拦截上传弹窗
       const imgDir2 = path.join(os.homedir(), '.multipost', 'images')
       try {
         const files = fs.readdirSync(imgDir2).filter((f: string) => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
         if (files.length > 0) {
-          const coverBtn = '#js_cover_area > div.js_cover_preview_new.select-cover__preview'
-          await page.locator(coverBtn).click({ timeout: 5000 })
-          await page.waitForTimeout(1000)
-          // 尝试上传
           const fp = path.join(imgDir2, files[0])
-          await page.locator('input[type="file"]').setInputFiles(fp, { timeout: 5000 })
+          const coverSel = '#js_cover_area > div.js_cover_preview_new.select-cover__preview'
+          const [chooser] = await Promise.all([
+            page.waitForEvent('filechooser', { timeout: 8000 }),
+            page.locator(coverSel).click({ timeout: 5000 }),
+          ])
+          await chooser.setFiles(fp)
           await page.waitForTimeout(2000)
-          // 点确定
-          await page.locator('button:has-text("确定"), button:has-text("完成")').first().click({ timeout: 3000 }).catch(() => {})
+          // 关掉弹窗，点确定
+          try { await page.locator('button:has-text("确定")').click({ timeout: 3000 }) } catch {}
+          try { await page.locator('button:has-text("完成")').click({ timeout: 3000 }) } catch {}
           await page.waitForTimeout(1000)
         }
       } catch {}
