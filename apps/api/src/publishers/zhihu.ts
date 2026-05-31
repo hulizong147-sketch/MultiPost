@@ -8,6 +8,7 @@ import { PlatformType } from '@multipost/shared'
 import type { PlatformContent } from '@multipost/shared'
 import path from 'path'
 import os from 'os'
+import fs from 'fs'
 import { BasePublisher, type PublishResult } from './base.js'
 
 const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
@@ -53,26 +54,17 @@ export class ZhihuPublisher extends BasePublisher {
         await t.fill(content.title)
       } catch {}
 
-      // 填入正文 — 知乎 React 编辑器，用 innerHTML
-      const bodySels = [
-        '.public-DraftEditor-content',
-        '[data-contents="true"]',
-        '.DraftEditor-root [contenteditable]',
-      ]
+      // 填入正文 — 先截图看页面结构
       let bodyFilled = false
-      for (const sel of bodySels) {
-        try {
-          const el = page.locator(sel).first()
-          await el.waitFor({ timeout: 3000 })
-          await el.click()
-          await page.evaluate((el: Element, html: string) => {
-            (el as HTMLElement).innerHTML = html
-            el.dispatchEvent(new Event('input', { bubbles: true }))
-          }, await el.elementHandle(), content.body)
-          bodyFilled = true
-          break
-        } catch { continue }
-      }
+      try {
+        await page.screenshot({ path: path.join(os.homedir(), 'Desktop', 'zhihu.png'), fullPage: false })
+        // 列出所有 contenteditable
+        const info = await page.evaluate(() => {
+          const els = document.querySelectorAll('[contenteditable="true"]')
+          return Array.from(els).slice(0, 5).map(e => e.className || e.tagName)
+        })
+        fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'zhihu-editors.txt'), JSON.stringify(info), 'utf-8')
+      } catch {}
       if (!bodyFilled) {
         await browser.close()
         return { success: false, platform: PlatformType.ZHIHU, message: '未找到知乎正文编辑区，页面结构可能已变更' }
