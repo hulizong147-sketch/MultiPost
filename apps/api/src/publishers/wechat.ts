@@ -118,8 +118,27 @@ export class WeChatPublisher extends BasePublisher {
       // 5. 作者
       try { await page.locator('#author').fill(content.title.slice(0, 8), { timeout: 3000 }) } catch {}
 
-      // 6. 保存
-      try { await page.locator('button:has-text("保存")').first().click({ timeout: 5000 }); await page.waitForTimeout(1000) } catch {}
+      // 6. 封面
+      // 如果有存储图片，点击封面区域上传
+      const imgDir2 = path.join(os.homedir(), '.multipost', 'images')
+      try {
+        const files = fs.readdirSync(imgDir2).filter((f: string) => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
+        if (files.length > 0) {
+          const coverBtn = '#js_cover_area > div.js_cover_preview_new.select-cover__preview'
+          await page.locator(coverBtn).click({ timeout: 5000 })
+          await page.waitForTimeout(1000)
+          // 尝试上传
+          const fp = path.join(imgDir2, files[0])
+          await page.locator('input[type="file"]').setInputFiles(fp, { timeout: 5000 })
+          await page.waitForTimeout(2000)
+          // 点确定
+          await page.locator('button:has-text("确定"), button:has-text("完成")').first().click({ timeout: 3000 }).catch(() => {})
+          await page.waitForTimeout(1000)
+        }
+      } catch {}
+
+      // 7. 预览
+      try { await page.locator('#js_preview > button').click({ timeout: 5000 }); await page.waitForTimeout(2000) } catch {}
 
       return { success: true, platform: PlatformType.WECHAT_MP, message: '公众号发布完成' }
 
