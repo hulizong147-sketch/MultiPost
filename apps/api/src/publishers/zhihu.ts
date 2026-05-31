@@ -54,15 +54,28 @@ export class ZhihuPublisher extends BasePublisher {
         await t.fill(content.title)
       } catch {}
 
-      // 填入正文 — public-DraftEditor-content（已验证存在）
+      // 填入正文 — 先复制到剪贴板再 Ctrl+V
       const bodyEl = page.locator('.public-DraftEditor-content').first()
       await bodyEl.waitFor({ timeout: 10000 })
       await bodyEl.click()
+      await page.waitForTimeout(500)
+      // 用隐藏 div 复制 HTML 到剪贴板
       await page.evaluate((html: string) => {
-        const el = document.querySelector('.public-DraftEditor-content') as HTMLElement
-        if (el) { el.innerHTML = html; el.dispatchEvent(new Event('input', { bubbles: true })) }
+        const div = document.createElement('div')
+        div.contentEditable = 'true'
+        div.innerHTML = html
+        div.style.cssText = 'position:fixed;left:-9999px;top:-9999px'
+        document.body.appendChild(div)
+        div.focus()
+        document.execCommand('selectAll')
+        document.execCommand('copy')
+        document.body.removeChild(div)
       }, content.body)
-      await page.waitForTimeout(1000)
+      await page.waitForTimeout(300)
+      // 点回正文并 Ctrl+V
+      await bodyEl.click()
+      await page.keyboard.press('Control+v')
+      await page.waitForTimeout(2000)
 
       // 封面 — 滚到封面区域，上传项目图片
       try {
