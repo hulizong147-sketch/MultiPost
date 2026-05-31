@@ -1,9 +1,7 @@
 import type { PlatformContent, PlatformType } from '@multipost/shared'
 import type { BasePublisher, PublishResult } from './base.js'
-import { csdnPublisher } from './csdn.js'
 import { bilibiliPublisher } from './bilibili.js'
 import { zhihuPublisher } from './zhihu.js'
-import { toutiaoPublisher } from './toutiao.js'
 import { wechatPublisher } from './wechat.js'
 import { xiaohongshuPublisher } from './xiaohongshu.js'
 
@@ -45,10 +43,8 @@ class PublisherRegistry {
 
 export const publisherRegistry = new PublisherRegistry()
 
-// 注册已实现的发布器（6 平台全覆盖）
-publisherRegistry.register(csdnPublisher)
+// 注册已实现的发布器（4 平台）
 publisherRegistry.register(bilibiliPublisher)
 publisherRegistry.register(zhihuPublisher)
-publisherRegistry.register(toutiaoPublisher)
 publisherRegistry.register(wechatPublisher)
 publisherRegistry.register(xiaohongshuPublisher)

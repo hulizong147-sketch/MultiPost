@@ -4,8 +4,6 @@ export enum PlatformType {
   ZHIHU = 'zhihu',
   XIAOHONGSHU = 'xiaohongshu',
   BILIBILI = 'bilibili',
-  TOUTIAO = 'toutiao',
-  CSDN = 'csdn',
 }
 
 // 规范化内容（平台无关的中间表示）
@@ -112,26 +110,6 @@ export const PLATFORM_CONSTRAINTS: Record<PlatformType, {
     summaryMaxLength: 200,
     imageRatio: '16:9',
     supportMarkdown: false,
-    allowExternalLinks: true,
-    hashtagMaxCount: 5,
-  },
-  [PlatformType.TOUTIAO]: {
-    name: '今日头条',
-    titleMaxLength: 30,
-    bodyMaxLength: null,
-    summaryMaxLength: 100,
-    imageRatio: '16:9',
-    supportMarkdown: false,
-    allowExternalLinks: false,
-    hashtagMaxCount: 3,
-  },
-  [PlatformType.CSDN]: {
-    name: 'CSDN',
-    titleMaxLength: 100,
-    bodyMaxLength: null,
-    summaryMaxLength: 200,
-    imageRatio: '16:9',
-    supportMarkdown: true,
     allowExternalLinks: true,
     hashtagMaxCount: 5,
   },
