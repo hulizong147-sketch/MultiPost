@@ -63,28 +63,23 @@ export class WeChatPublisher extends BasePublisher {
       }
       await page.waitForTimeout(5000)  // 确保 React 完全渲染
 
-      // 3. 标题 — native value setter + InputEvent（唯一靠谱方案）
+      // 3. 标题 — native setter + InputEvent
       await page.evaluate((text: string) => {
         const el = document.querySelector('#title') as HTMLTextAreaElement | null
         if (!el) return
         el.focus()
-        const s = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
-        s.call(el, text)
+        const nativeSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+        nativeSetter.call(el, text)
         el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }))
       }, content.title)
-      await page.waitForTimeout(300)
 
-      // 4. 正文 — iframe focus + execCommand insertHTML
+      // 4. 正文 — execCommand insertHTML
       await page.evaluate((html: string) => {
         const f = document.querySelector('iframe') as HTMLIFrameElement | null
         const doc = f?.contentDocument
-        const body = doc?.body
-        if (!body) return
-        body.focus()
-        doc!.execCommand('selectAll')
-        doc!.execCommand('insertHTML', false, html)
+        const b = doc?.body
+        if (b) { b.focus(); doc!.execCommand('selectAll'); doc!.execCommand('insertHTML', false, html) }
       }, content.body)
-      await page.waitForTimeout(300)
 
       // 5. 作者
       try { await page.locator('#author').fill(content.title.slice(0, 8), { timeout: 3000 }) } catch {}
