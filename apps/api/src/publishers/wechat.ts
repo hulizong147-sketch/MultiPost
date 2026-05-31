@@ -1,28 +1,20 @@
 /**
  * 微信公众号 Publisher
  *
- * 策略：
- * - 标题：dispatchEvent(MouseEvent.click) + native value setter + InputEvent（绕过 Playwright 可见性检查 + React 拦截）
- * - 正文：iframe innerHTML（HTML 格式）
- * - 作者：fill()
- * - 保存：button:has-text
+ * 正文不在 iframe 里！在主页面 #ueditor_0 > div > div > div > div > section
  */
 import { PlatformType } from '@multipost/shared'
 import type { PlatformContent } from '@multipost/shared'
 import path from 'path'
 import os from 'os'
-import fs from 'fs'
 import { BasePublisher, type PublishResult } from './base.js'
 
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
 const UDD = path.join(os.homedir(), '.multipost', 'chrome-wechat')
 
-// 清理 profile 锁文件
 function cleanLock() {
   const locks = ['SingletonLock', 'SingletonCookie', 'SingletonSocket', 'lockfile']
-  for (const f of locks) {
-    try { fs.unlinkSync(path.join(UDD, f)) } catch {}
-  }
+  for (const f of locks) { try { require('fs').unlinkSync(path.join(UDD, f)) } catch {} }
 }
 
 export class WeChatPublisher extends BasePublisher {
@@ -61,37 +53,27 @@ export class WeChatPublisher extends BasePublisher {
       } catch {
         await page.goto('https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=10&lang=zh_CN', { waitUntil: 'domcontentloaded', timeout: 15000 })
       }
-      await page.waitForTimeout(5000)  // 确保 React 完全渲染
+      await page.waitForTimeout(5000)
 
-      // 3. 正文 — 主页面 #ueditor_0 section（不在 iframe 里！）
-      try {
-        await page.waitForTimeout(3000)
-        await page.evaluate((html: string) => {
-          const sel = '#ueditor_0 > div > div > div > div > section'
-          const el = document.querySelector(sel) as HTMLElement | null
-          if (el) { el.innerHTML = html; el.dispatchEvent(new Event('input', { bubbles: true })) }
-        }, content.body)
-      } catch {}
+      // 3. 正文 — 主页面 #ueditor_0 section
+      await page.evaluate((html: string) => {
+        const el = document.querySelector('#ueditor_0 > div > div > div > div > section') as HTMLElement | null
+        if (el) { el.innerHTML = html; el.dispatchEvent(new Event('input', { bubbles: true })) }
+      }, content.body)
 
-      // 4. 标题 — #js_title_main > div > div > div > div
-      try {
-        await page.evaluate((text: string) => {
-          const sel = '#js_title_main > div > div > div > div'
-          const el = document.querySelector(sel) as HTMLElement | null
-          if (!el) return
-          el.focus()
-          // contenteditable div
+      // 4. 标题 — #js_title_main
+      await page.evaluate((text: string) => {
+        const el = document.querySelector('#js_title_main > div > div > div > div') as HTMLElement | null
+        if (el) {
           if (el.getAttribute('contenteditable') != null) {
-            el.innerText = text
-            el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }))
+            el.innerText = text; el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }))
           } else {
-            // fallback textarea
             const s = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
             s.call(el, text)
             el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }))
           }
-        }, content.title)
-      } catch {}
+        }
+      }, content.title)
 
       // 5. 作者
       try { await page.locator('#author').fill(content.title.slice(0, 8), { timeout: 3000 }) } catch {}
@@ -100,6 +82,7 @@ export class WeChatPublisher extends BasePublisher {
       try { await page.locator('button:has-text("保存")').first().click({ timeout: 5000 }); await page.waitForTimeout(1000) } catch {}
 
       return { success: true, platform: PlatformType.WECHAT_MP, message: '公众号发布完成' }
+
     } catch (err: any) {
       return { success: false, platform: PlatformType.WECHAT_MP, message: `异常: ${err.message}` }
     }
