@@ -130,13 +130,8 @@ export class WeChatPublisher extends BasePublisher {
           // 2. 点「从图片库选择」
           await page.locator('#js_cover_null > ul > li:nth-child(2) > a').click({ timeout: 5000 })
           await page.waitForTimeout(1000)
-          // 3. 点「上传文件」拦截 filechooser
-          const label = '#rt_rt_1jpuipmls2kq1dpk1t6s1a5k1f6c1 > label'
-          const [chooser] = await Promise.all([
-            page.waitForEvent('filechooser', { timeout: 10000 }),
-            page.locator(label).click({ timeout: 5000 }),
-          ])
-          await chooser.setFiles(fp)
+          // 3. 直接 setInputFiles 给上传 input
+          await page.locator('input[type="file"]').setInputFiles(fp, { timeout: 5000 })
           await page.waitForTimeout(2000)
           // 4. 点「下一步」（F12 实测选择器）
           const nextBtn = '#vue_app > mp-image-product-dialog > div > div.weui-desktop-dialog__wrp.weui-desktop-dialog_img-picker > div > div.weui-desktop-dialog__ft > div:nth-child(1) > button'
