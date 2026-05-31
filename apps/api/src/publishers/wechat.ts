@@ -63,18 +63,22 @@ export class WeChatPublisher extends BasePublisher {
       }
       await page.waitForTimeout(5000)  // 确保 React 完全渲染
 
-      // 3. 正文 — 纯 innerHTML，不碰 UE
-      let bodyMethod = 'not-run'
+      // 3. 正文 — 实锤诊断：写入前后对比
+      let diag = ''
       try {
         await page.waitForTimeout(3000)
-        await page.evaluate((html: string) => {
+        diag = await page.evaluate((html: string) => {
           const f = document.querySelector('iframe') as HTMLIFrameElement | null
           const doc = f?.contentDocument
-          if (doc?.body) { doc.body.innerHTML = html }
+          if (!doc) return 'NO_DOC'
+          if (!doc.body) return 'NO_BODY'
+          const b4 = (doc.body.innerText || '').slice(0, 60)
+          doc.body.innerHTML = html
+          const af = (doc.body.innerText || '').slice(0, 60)
+          return 'b4=[' + b4 + '] af=[' + af + '] len=' + html.length
         }, content.body)
-        bodyMethod = 'innerHTML'
-      } catch (e: any) { bodyMethod = 'error:' + (e?.message || '').slice(0, 60) }
-      fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'body-method.txt'), bodyMethod, 'utf-8')
+      } catch (e: any) { diag = 'ERR:' + (e?.message || '').slice(0, 80) }
+      fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'body-diag.txt'), diag, 'utf-8')
 
       // 4. 标题 — #js_title_main > div > div > div > div
       try {
