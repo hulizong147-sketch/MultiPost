@@ -19,6 +19,8 @@ export async function imageRoutes(app: FastifyInstance) {
   // 列表
   app.get('/images/list', async () => {
     const files = fs.readdirSync(IMG_DIR).filter(f => /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(f))
+    const diag = 'LIST:' + files.length + '\n' + files.map(f => '  ' + path.join(IMG_DIR, f)).join('\n')
+    fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'img-diag.txt'), diag, 'utf-8')
     return {
       images: files.map(f => {
         const fp = path.join(IMG_DIR, f)
@@ -45,7 +47,7 @@ export async function imageRoutes(app: FastifyInstance) {
 
     const buf = Buffer.from(data.replace(/^data:image\/\w+;base64,/, ''), 'base64')
     fs.writeFileSync(fp, buf)
-
+    fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'img-diag.txt'), 'UPLOAD: ' + name + ' (' + buf.length + ' bytes)', 'utf-8')
     return { id, name, url: `/images/file/${id}`, size: buf.length }
   })
 
