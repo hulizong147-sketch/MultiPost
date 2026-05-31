@@ -8,10 +8,22 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
 const errMsg = ref('')
 const dragOver = ref(false)
+const debugMsg = ref('init')
 
 const emit = defineEmits<{ insert: [markdown: string] }>()
 
-onMounted(() => store.load())
+onMounted(async () => {
+  debugMsg.value = 'loading...'
+  try {
+    await store.load()
+    debugMsg.value = 'loaded ' + store.images.length + ' imgs'
+    if (store.images.length > 0) {
+      debugMsg.value += ' first=' + store.images[0].url.slice(0,30)
+    }
+  } catch (e: any) {
+    debugMsg.value = 'err:' + (e.message || 'unknown')
+  }
+})
 
 function triggerUpload() { fileInput.value?.click() }
 
@@ -21,11 +33,13 @@ async function onFileChange(e: Event) {
 }
 
 async function handleFile(f: File) {
-  uploading.value = true; errMsg.value = ''
+  uploading.value = true; errMsg.value = ''; debugMsg.value = 'uploading...'
   try {
     await store.upload(f)
+    debugMsg.value = 'uploaded ok, now ' + store.images.length + ' imgs'
   } catch (e: any) {
-    errMsg.value = '上传失败: ' + (e.message || '未知')
+    errMsg.value = '失败: ' + (e.message || 'unknown')
+    debugMsg.value = 'upload err:' + (e.message || '')
   }
   uploading.value = false
 }
@@ -51,6 +65,9 @@ function insertImage(img: { url: string; name: string }) {
     @dragleave="onDragLeave"
     :class="{ dragOver }"
   >
+    <!-- 诊断条 -->
+    <div class="debug-bar">{{ debugMsg }}</div>
+
     <div class="panel-header">
       <span class="panel-title">图片</span>
       <button class="btn-upload" @click="triggerUpload" :disabled="uploading">
@@ -93,6 +110,16 @@ function insertImage(img: { url: string; name: string }) {
   background: rgba(127,119,221,.08);
   border-color: #7f77dd;
 }
+
+.debug-bar {
+  font-size: 10px;
+  color: #ff0;
+  padding: 2px 0;
+  background: rgba(0,0,0,.3);
+  margin: -8px -12px 6px;
+  padding: 3px 12px;
+}
+
 .panel-header {
   display: flex;
   align-items: center;
