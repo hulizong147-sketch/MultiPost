@@ -118,33 +118,32 @@ export class WeChatPublisher extends BasePublisher {
       // 5. 作者
       try { await page.locator('#author').fill(content.title.slice(0, 8), { timeout: 3000 }) } catch {}
 
-      // 6. 封面 — 拖拽或选择封面 → 从图片库选择 → 上传文件
+      // 6. 封面 — 拖拽或选择封面 → 从图片库选择 → 上传文件 → 下一步
       try {
         const imgDir2 = path.join(os.homedir(), '.multipost', 'images')
         const files = fs.readdirSync(imgDir2).filter((f: string) => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
         if (files.length > 0) {
           const fp = path.join(imgDir2, files[0])
-          // 点封面区域
+          // 1. 点封面区域唤出菜单
           await page.locator('text=拖拽或选择封面').click({ timeout: 5000 })
           await page.waitForTimeout(500)
-          // 点「从图片库选择」
-          await page.locator('text=从图片库选择').click({ timeout: 5000 })
+          // 2. 点「从图片库选择」
+          await page.locator('#js_cover_null > ul > li:nth-child(2) > a').click({ timeout: 5000 })
           await page.waitForTimeout(1000)
-          // 点「上传文件」并拦截 filechooser
+          // 3. 点「上传文件」拦截 filechooser
+          const label = '#rt_rt_1jpuipmls2kq1dpk1t6s1a5k1f6c1 > label'
           const [chooser] = await Promise.all([
-            page.waitForEvent('filechooser', { timeout: 8000 }),
-            page.locator('text=上传文件').click({ timeout: 5000 }),
+            page.waitForEvent('filechooser', { timeout: 10000 }),
+            page.locator(label).click({ timeout: 5000 }),
           ])
           await chooser.setFiles(fp)
           await page.waitForTimeout(2000)
-          // 点「下一步」
-          await page.locator('button:has-text("下一步"), .weui-desktop-btn_primary').click({ timeout: 5000 })
+          // 4. 点「下一步」（F12 实测选择器）
+          const nextBtn = '#vue_app > mp-image-product-dialog > div > div.weui-desktop-dialog__wrp.weui-desktop-dialog_img-picker > div > div.weui-desktop-dialog__ft > div:nth-child(1) > button'
+          await page.locator(nextBtn).click({ timeout: 5000 })
           await page.waitForTimeout(1000)
         }
       } catch {}
-
-      // 7. 预览
-      try { await page.locator('#js_preview > button').click({ timeout: 5000 }); await page.waitForTimeout(2000) } catch {}
 
       return { success: true, platform: PlatformType.WECHAT_MP, message: '公众号发布完成' }
 
