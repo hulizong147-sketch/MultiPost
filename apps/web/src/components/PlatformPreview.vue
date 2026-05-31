@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { PlatformType, PLATFORM_CONSTRAINTS } from '@multipost/shared'
 import type { PlatformContent } from '@multipost/shared'
 import { useEditorStore } from '../stores/editor'
@@ -21,6 +21,8 @@ const isToutiao = computed(() => props.platform === PlatformType.TOUTIAO)
 const isCsdn = computed(() => props.platform === PlatformType.CSDN)
 
 const coverImage = computed(() => imgStore.images[0]?.url || '')
+
+onMounted(() => { if (!imgStore.images.length) imgStore.load() })
 
 function copyContent() {
   if (!props.content) return
