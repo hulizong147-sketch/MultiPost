@@ -118,24 +118,28 @@ export class WeChatPublisher extends BasePublisher {
       // 5. 作者
       try { await page.locator('#author').fill(content.title.slice(0, 8), { timeout: 3000 }) } catch {}
 
-      // 6. 封面 — 拖拽或选择封面 → 从图片库选择
+      // 6. 封面 — 拖拽或选择封面 → 从图片库选择 → 上传文件
       try {
         const imgDir2 = path.join(os.homedir(), '.multipost', 'images')
         const files = fs.readdirSync(imgDir2).filter((f: string) => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
         if (files.length > 0) {
+          const fp = path.join(imgDir2, files[0])
           // 点封面区域
           await page.locator('text=拖拽或选择封面').click({ timeout: 5000 })
           await page.waitForTimeout(500)
           // 点「从图片库选择」
           await page.locator('text=从图片库选择').click({ timeout: 5000 })
-          await page.waitForTimeout(1500)
-          // 点图片库第一个缩略图
-          try {
-            await page.locator('.weui-desktop-dialog__wrp img, .weui-desktop-media__img, [class*="img_item"]').first().click({ timeout: 5000 })
-            await page.waitForTimeout(500)
-            await page.locator('button:has-text("确定"), .weui-desktop-btn_primary').first().click({ timeout: 3000 })
-            await page.waitForTimeout(1000)
-          } catch { await page.keyboard.press('Escape') }
+          await page.waitForTimeout(1000)
+          // 点「上传文件」并拦截 filechooser
+          const [chooser] = await Promise.all([
+            page.waitForEvent('filechooser', { timeout: 8000 }),
+            page.locator('text=上传文件').click({ timeout: 5000 }),
+          ])
+          await chooser.setFiles(fp)
+          await page.waitForTimeout(2000)
+          // 点「下一步」
+          await page.locator('button:has-text("下一步"), .weui-desktop-btn_primary').click({ timeout: 5000 })
+          await page.waitForTimeout(1000)
         }
       } catch {}
 
