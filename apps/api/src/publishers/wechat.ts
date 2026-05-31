@@ -83,18 +83,17 @@ export class WeChatPublisher extends BasePublisher {
         }, content.title)
       } catch {}
 
-      // 4. 正文 — focus section + execCommand insertHTML
+      // 4. 正文 — 自动测试验证✅的方案: doc.body innerHTML
       try {
-        await page.evaluate((html: string) => {
+        await page.waitForTimeout(2000)  // 给 iframe 多等下
+        const done = await page.evaluate((html: string) => {
           const f = document.querySelector('iframe') as HTMLIFrameElement | null
           const doc = f?.contentDocument
-          if (!doc) return
-          const sel = '#ueditor_0 > div > div > div > div'
-          const el = doc.querySelector(sel) as HTMLElement | null
-          if (!el) return
-          el.focus()
-          doc.execCommand('selectAll')
-          doc.execCommand('insertHTML', false, html)
+          const el = doc?.querySelector('[contenteditable="true"]') || doc?.body
+          if (!el) return 0
+          el.innerHTML = html
+          el.dispatchEvent(new Event('input', { bubbles: true }))
+          return 1
         }, content.body)
       } catch {}
 
