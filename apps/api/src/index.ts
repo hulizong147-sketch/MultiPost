@@ -3,6 +3,7 @@ import cors from '@fastify/cors'
 import { transformRoutes } from './routes/transform.js'
 import { platformRoutes } from './routes/platforms.js'
 import { publishRoutes } from './routes/publish.js'
+import { imageRoutes } from './routes/images.js'
 
 const app = Fastify({
   logger: true,
@@ -31,6 +32,8 @@ await app.register(transformRoutes, { prefix: '/api' })
 await app.register(platformRoutes, { prefix: '/api' })
 // 真实发布路由（Playwright 桥接）
 await app.register(publishRoutes, { prefix: '/api' })
+// 图片管理（上传/列表/删除）
+await app.register(imageRoutes, { prefix: '/api' })
 
 const port = Number(process.env.PORT) || 3000
 

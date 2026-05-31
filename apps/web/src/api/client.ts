@@ -63,3 +63,34 @@ export async function fetchPublishPlatforms(): Promise<string[]> {
   const data = await res.json()
   return data.platforms
 }
+
+// ===== 图片管理 =====
+
+export interface ImageInfo {
+  id: string
+  name: string
+  url: string
+  size: number
+  createdAt: string
+}
+
+export async function fetchImages(): Promise<ImageInfo[]> {
+  const res = await fetch(`${BASE_URL}/images/list`)
+  if (!res.ok) throw new Error('获取图片列表失败')
+  const data = await res.json()
+  return data.images
+}
+
+export async function uploadImage(name: string, base64: string): Promise<ImageInfo> {
+  const res = await fetch(`${BASE_URL}/images/upload`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, data: base64 }),
+  })
+  if (!res.ok) throw new Error('上传失败')
+  return res.json()
+}
+
+export async function deleteImage(id: string): Promise<void> {
+  await fetch(`${BASE_URL}/images/${id}`, { method: 'DELETE' })
+}

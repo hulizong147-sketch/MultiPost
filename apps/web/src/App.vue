@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import EditorPanel from './components/EditorPanel.vue'
+import ImagePanel from './components/ImagePanel.vue'
 import PlatformSelector from './components/PlatformSelector.vue'
 import PreviewGrid from './components/PreviewGrid.vue'
 import TransformButton from './components/TransformButton.vue'
@@ -10,6 +11,8 @@ import { useEditorStore } from './stores/editor'
 const store = useEditorStore()
 const editorRef = ref<InstanceType<typeof EditorPanel> | null>(null)
 const showAccount = ref(false)
+
+function onInsertImage(md: string) { editorRef.value?.setContent(store.markdown + '\n' + md) }
 </script>
 
 <template>
@@ -42,6 +45,7 @@ const showAccount = ref(false)
     <main class="main">
       <aside class="editor-pane">
         <EditorPanel ref="editorRef" />
+        <ImagePanel @insert="onInsertImage" />
       </aside>
       <section class="preview-pane">
         <div v-if="store.selectedPlatforms.length === 0" class="empty-state">
