@@ -7,6 +7,7 @@ import { PlatformType } from '@multipost/shared'
 import type { PlatformContent } from '@multipost/shared'
 import path from 'path'
 import os from 'os'
+import fs from 'fs'
 import { BasePublisher, type PublishResult } from './base.js'
 
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
@@ -14,7 +15,7 @@ const UDD = path.join(os.homedir(), '.multipost', 'chrome-wechat')
 
 function cleanLock() {
   const locks = ['SingletonLock', 'SingletonCookie', 'SingletonSocket', 'lockfile']
-  for (const f of locks) { try { require('fs').unlinkSync(path.join(UDD, f)) } catch {} }
+  for (const f of locks) { try { fs.unlinkSync(path.join(UDD, f)) } catch {} }
 }
 
 export class WeChatPublisher extends BasePublisher {
@@ -55,41 +56,50 @@ export class WeChatPublisher extends BasePublisher {
       }
       await page.waitForTimeout(5000)
 
-      // 3. 正文 — 优先用存储图片，否则生成 Canvas 封面
-      // 读取存储的图片
-      let storedImg = ''
-      const imgDir = path.join(os.homedir(), '.multipost', 'images')
-      try {
-        const files = require('fs').readdirSync(imgDir).filter((f: string) => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
-        if (files.length > 0) {
-          storedImg = require('fs').readFileSync(path.join(imgDir, files[0]), 'base64')
-          storedImg = `data:image/${files[0].split('.').pop()};base64,` + storedImg
+      // 3. 正文 — 本地图片转 base64 + 主页面 #ueditor_0 section
+      // 将 HTML 中的 <img src="/images/file/xxx"> 替换为 base64 data URI
+      let bodyHtml = content.body
+      const IMG_RE = /<img[^>]+src="\/images\/file\/([^"]+)"/gi
+      let m: RegExpExecArray | null
+      while ((m = IMG_RE.exec(bodyHtml)) !== null) {
+        const fp = path.join(os.homedir(), '.multipost', 'images', m[1])
+        if (fs.existsSync(fp)) {
+          const ext = path.extname(m[1]).toLowerCase()
+          const mime: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp' }
+          const b64 = fs.readFileSync(fp, 'base64')
+          bodyHtml = bodyHtml.replace(m[0], m[0].replace(`/images/file/${m[1]}`, `data:${mime[ext] || 'image/png'};base64,${b64}`))
         }
-      } catch {}
+      }
 
-      await page.evaluate((data: string) => {
-        const { html, title, stored } = JSON.parse(data)
-        let img = ''
-        if (stored) {
-          img = '<img src="' + stored + '" style="width:100%;max-width:900px;margin-bottom:16px"/>'
-        } else {
-          // fallback: Canvas 生成
+      // 如果没有 <img>，则取存储的第一张图片做封面
+      if (!/<img/i.test(bodyHtml)) {
+        const imgDir = path.join(os.homedir(), '.multipost', 'images')
+        try {
+          const files = fs.readdirSync(imgDir).filter((f: string) => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
+          if (files.length > 0) {
+            const ext = path.extname(files[0]).toLowerCase()
+            const mime: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp' }
+            const b64 = fs.readFileSync(path.join(imgDir, files[0]), 'base64')
+            bodyHtml = `<img src="data:${mime[ext] || 'image/png'};base64,${b64}" style="width:100%;max-width:900px;margin-bottom:16px"/>` + bodyHtml
+          }
+        } catch {}
+      }
+
+      await page.evaluate((html: string) => {
+        // 如果没有图片，Canvas 生成封面
+        if (!/<img/i.test(html)) {
           const c = document.createElement('canvas')
           c.width = 900; c.height = 500
           const ctx = c.getContext('2d')!
-          ctx.fillStyle = '#1677ff'
-          ctx.fillRect(0, 0, 900, 500)
-          ctx.fillStyle = '#fff'
-          ctx.font = 'bold 48px sans-serif'
-          ctx.textAlign = 'center'
-          ctx.fillText(title.slice(0, 20), 450, 220)
-          ctx.font = '24px sans-serif'
-          ctx.fillText('MultiPost', 450, 300)
-          img = '<img src="'+c.toDataURL('image/png')+'" style="width:100%;max-width:900px;margin-bottom:16px"/>'
+          ctx.fillStyle = '#1677ff'; ctx.fillRect(0, 0, 900, 500)
+          ctx.fillStyle = '#fff'; ctx.font = 'bold 48px sans-serif'; ctx.textAlign = 'center'
+          ctx.fillText(html.slice(0, 20), 450, 220)
+          ctx.font = '24px sans-serif'; ctx.fillText('MultiPost', 450, 300)
+          html = '<img src="'+c.toDataURL('image/png')+'" style="width:100%;max-width:900px;margin-bottom:16px"/>' + html
         }
         const el = document.querySelector('#ueditor_0 > div > div > div > div > section') as HTMLElement | null
-        if (el) { el.innerHTML = img + html; el.dispatchEvent(new Event('input', { bubbles: true })) }
-      }, JSON.stringify({ html: content.body, title: content.title, stored: storedImg }))
+        if (el) { el.innerHTML = html; el.dispatchEvent(new Event('input', { bubbles: true })) }
+      }, bodyHtml)
 
       // 4. 标题 — #js_title_main
       await page.evaluate((text: string) => {
