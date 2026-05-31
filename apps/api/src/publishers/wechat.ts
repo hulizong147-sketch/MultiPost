@@ -83,23 +83,34 @@ export class WeChatPublisher extends BasePublisher {
         }, content.title)
       } catch {}
 
-      // 4. 正文 — F12 实测: iframe 内 #ueditor_0 > div > div > div > div > section > span
+      // 4. 正文 — 自检版
       try {
-        await page.evaluate((html: string) => {
+        const found = await page.evaluate((html: string) => {
           const f = document.querySelector('iframe') as HTMLIFrameElement | null
           const doc = f?.contentDocument
-          if (!doc) return
+          if (!doc) { (window as any).__debug = 'iframe 未加载' ; return 0 }
           const sel = '#ueditor_0 > div > div > div > div > section > span'
           const el = doc.querySelector(sel) as HTMLElement | null
-          if (!el) return
+          if (!el) {
+            // 自检: 列出 iframe 内所有 ID
+            const ids = Array.from(doc.querySelectorAll('[id]')).map(e => e.id).join(',')
+            ;(window as any).__debug = `FOUND 0 | IDs:${ids.slice(0,100)}`
+            return 0
+          }
           el.focus()
           el.innerHTML = html
           el.dispatchEvent(new Event('input', { bubbles: true }))
+          ;(window as any).__debug = 'FOUND 1 ✅'
+          return 1
         }, content.body)
       } catch {}
 
       // 5. 作者
       try { await page.locator('#author').fill(content.title.slice(0, 8), { timeout: 3000 }) } catch {}
+
+      // 诊断写入文件
+      const debug = await page.evaluate(() => (window as any).__debug || '')
+      fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'wechat-diag.txt'), debug, 'utf-8')
 
       // 6. 保存
       try { await page.locator('button:has-text("保存")').first().click({ timeout: 5000 }); await page.waitForTimeout(1000) } catch {}
