@@ -83,18 +83,18 @@ export class WeChatPublisher extends BasePublisher {
         }, content.title)
       } catch {}
 
-      // 4. 正文 — F12 验证选择器: #ueditor_0 > div > div > div > div > section > span
+      // 4. 正文 — focus section + execCommand insertHTML
       try {
         await page.evaluate((html: string) => {
           const f = document.querySelector('iframe') as HTMLIFrameElement | null
           const doc = f?.contentDocument
           if (!doc) return
           const sel = '#ueditor_0 > div > div > div > div > section'
-          const section = doc.querySelector(sel) as HTMLElement | null
-          if (section) {
-            section.innerHTML = html
-            section.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }))
-          }
+          const el = doc.querySelector(sel) as HTMLElement | null
+          if (!el) return
+          el.focus()
+          doc.execCommand('selectAll')
+          doc.execCommand('insertHTML', false, html)
         }, content.body)
       } catch {}
 
