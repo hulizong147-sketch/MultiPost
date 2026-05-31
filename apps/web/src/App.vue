@@ -84,7 +84,7 @@ body { font-family: 'Inter', sans-serif; background: #08080f; color: #e4e4ec; -w
 .ghost-btn.accent { border-color: rgba(127,119,221,0.3); color: #a8a0f0; }
 
 .main { display: flex; flex: 1; overflow: hidden; z-index: 1; }
-.editor-pane { width: 50%; border-right: 1px solid rgba(255,255,255,0.04); }
+.editor-pane { width: 50%; border-right: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; }
 .preview-pane { width: 50%; overflow-y: auto; }
 
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; }
