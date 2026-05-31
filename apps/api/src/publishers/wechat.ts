@@ -83,13 +83,13 @@ export class WeChatPublisher extends BasePublisher {
         }, content.title)
       } catch {}
 
-      // 4. 正文 — 真实选择器: iframe 内 #ueditor_0 > div > div > div > div > div
+      // 4. 正文 — F12 实测: iframe 内 #ueditor_0 > div > div > div > div > section > span
       try {
         await page.evaluate((html: string) => {
-          const f = document.querySelector('#ueditor_0, iframe') as HTMLIFrameElement | null
+          const f = document.querySelector('iframe') as HTMLIFrameElement | null
           const doc = f?.contentDocument
           if (!doc) return
-          const sel = '#ueditor_0 > div > div > div > div > div, body'
+          const sel = '#ueditor_0 > div > div > div > div > section > span'
           const el = doc.querySelector(sel) as HTMLElement | null
           if (!el) return
           el.focus()
