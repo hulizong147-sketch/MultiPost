@@ -63,22 +63,27 @@ export class WeChatPublisher extends BasePublisher {
       }
       await page.waitForTimeout(5000)  // 确保 React 完全渲染
 
-      // 3. 正文 — 先写文件看 HTML 对不对
-      fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'body-html.txt'), content.body.slice(0, 500), 'utf-8')
-
-      // 策略1: UEditor 官方 API setContent
+      // 3. 正文 — 等 UEditor 初始化后再写
       try {
-        await page.evaluate((html: string) => {
+        await page.waitForTimeout(3000)
+        // 先尝试 UEditor 官方 API
+        const usedUe = await page.evaluate((html: string) => {
           const ue = (window as any).UE?.getEditor?.('editor')
-          if (ue?.setContent) { ue.setContent(html); return }
-          // 策略2: 主页面内找 contenteditable + execCommand
-          const main = document.querySelector('[contenteditable="true"]') as HTMLElement
-          if (main) { main.focus(); document.execCommand('selectAll'); document.execCommand('insertHTML', false, html); return }
-          // 策略3: iframe body
-          const f = document.querySelector('iframe') as HTMLIFrameElement | null
-          const doc = f?.contentDocument
-          if (doc?.body) { doc.body.innerHTML = html; doc.body.dispatchEvent(new Event('input', { bubbles: true })) }
+          if (ue?.setContent) { ue.setContent(html); return 'UE' }
+          return ''
         }, content.body)
+        // 如果 UE 不存在，用 iframe innerHTML
+        if (!usedUe) {
+          await page.evaluate((html: string) => {
+            const f = document.querySelector('iframe') as HTMLIFrameElement | null
+            const doc = f?.contentDocument
+            if (doc?.body) {
+              doc.body.innerHTML = html
+              doc.body.dispatchEvent(new Event('input', { bubbles: true }))
+            }
+          }, content.body)
+        }
+        fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'body-method.txt'), usedUe || 'innerHTML', 'utf-8')
       } catch {}
 
       // 4. 标题 — #js_title_main > div > div > div > div
