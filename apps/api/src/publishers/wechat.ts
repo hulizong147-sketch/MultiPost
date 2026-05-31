@@ -138,9 +138,13 @@ export class WeChatPublisher extends BasePublisher {
           await page.locator('input[type="file"]').first().setInputFiles(fp, { timeout: 5000 })
           coverLog = '3-setFiles'
           await page.waitForTimeout(2000)
-          // 4
+          // 4. 下一步
           const nextBtn = '#vue_app > mp-image-product-dialog > div > div.weui-desktop-dialog__wrp.weui-desktop-dialog_img-picker > div > div.weui-desktop-dialog__ft > div:nth-child(1) > button'
           await page.locator(nextBtn).click({ timeout: 5000 })
+          await page.waitForTimeout(2000)
+          // 5. 可能还有「完成」
+          try { await page.locator('button:has-text("完成")').click({ timeout: 3000 }) } catch {}
+          await page.waitForTimeout(1000)
           coverLog = '4-done'
         }
       } catch (e: any) { coverLog = 'ERR:' + (e?.message||'').slice(0,60) }
