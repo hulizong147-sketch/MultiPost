@@ -89,7 +89,7 @@ export class WeChatPublisher extends BasePublisher {
           const f = document.querySelector('iframe') as HTMLIFrameElement | null
           const doc = f?.contentDocument
           if (!doc) return
-          const sel = '#ueditor_0 > div > div > div > div > section'
+          const sel = '#ueditor_0 > div > div > div > div'
           const el = doc.querySelector(sel) as HTMLElement | null
           if (!el) return
           el.focus()
