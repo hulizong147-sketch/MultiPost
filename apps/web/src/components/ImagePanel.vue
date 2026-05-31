@@ -27,6 +27,7 @@ function insertImage(img: { url: string; name: string }) {
       <span class="panel-title">图片</span>
       <button class="btn-upload" @click="triggerUpload" :disabled="store.loading">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>上传</span>
       </button>
       <input ref="fileInput" type="file" accept="image/*" hidden @change="onFileChange" />
     </div>
@@ -72,14 +73,13 @@ function insertImage(img: { url: string; name: string }) {
   letter-spacing: 1px;
 }
 .btn-upload {
-  width: 24px; height: 24px;
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 8px;
   background: rgba(255,255,255,.08);
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 4px;
-  color: #aaa;
-  cursor: pointer;
-  transition: all .15s;
+  color: #aaa; font-size: 11px;
+  cursor: pointer; transition: all .15s;
 }
 .btn-upload:hover { background: rgba(127,119,221,.2); color: #c4bef8; }
 .btn-upload:disabled { opacity: .3; cursor: default; }
