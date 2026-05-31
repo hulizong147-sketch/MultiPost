@@ -63,25 +63,20 @@ export class WeChatPublisher extends BasePublisher {
       }
       await page.waitForTimeout(5000)  // 确保 React 完全渲染
 
-      // 3. 正文 — 写 UEditor 自身 section 容器，不动 body
+      // 3. 正文 — 打探 iframe 结构
       let diag = ''
       try {
         await page.waitForTimeout(3000)
         diag = await page.evaluate((html: string) => {
+          // 主页面 iframe 的 ID
           const f = document.querySelector('iframe') as HTMLIFrameElement | null
+          const fid = f?.id || 'no-id'
+          // iframe 内所有 ID
           const doc = f?.contentDocument
-          if (!doc) return 'NO_DOC'
-          const sel = '#ueditor_0 > div > div > div > div > section'
-          const el = doc.querySelector(sel) as HTMLElement | null
-          if (el) {
-            const b4 = el.innerText.slice(0, 30)
-            el.innerHTML = html
-            return 'sec:' + b4 + '→' + el.innerText.slice(0, 50)
-          }
-          // fallback: body
-          const b4 = (doc.body?.innerText||'').slice(0,30)
-          if (doc.body) doc.body.innerHTML = html
-          return 'body:' + b4 + '→' + (doc.body?.innerText||'').slice(0,50)
+          const ids = doc ? Array.from(doc.querySelectorAll('[id]')).map(e=>e.id).slice(0,10).join(',') : 'NO_DOC'
+          // 也查主页面有没有 #ueditor_0
+          const main = document.querySelector('#ueditor_0')
+          return 'iframe.id=' + fid + ' | innerIDs=[' + ids + '] | main#ueditor_0=' + (main ? 'YES' : 'NO')
         }, content.body)
       } catch (e: any) { diag = 'ERR:' + (e?.message || '').slice(0, 80) }
       fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'body-diag.txt'), diag, 'utf-8')
