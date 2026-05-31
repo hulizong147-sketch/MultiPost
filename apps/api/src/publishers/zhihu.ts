@@ -71,6 +71,16 @@ export class ZhihuPublisher extends BasePublisher {
       ).first()
       await publishBtn.waitFor({ timeout: 10000 })
       await publishBtn.click()
+      await page.waitForTimeout(3000)
+
+      // 发布确认弹窗 — 可能有「确认发布」「确定」按钮
+      try {
+        const confirmSel = 'button:has-text("确认发布"), button:has-text("确定"), button:has-text("发布"), .publish-confirm button'
+        const confirm = page.locator(confirmSel).first()
+        await confirm.waitFor({ timeout: 8000 })
+        await confirm.click()
+        await page.waitForTimeout(3000)
+      } catch { /* 没有确认弹窗就继续 */ }
 
       await page.waitForTimeout(5000)
       const finalUrl = page.url()
