@@ -45,18 +45,19 @@ export class ZhihuPublisher extends BasePublisher {
       }
 
       // 填入标题
-      const titleSel = '.title-input textarea, .WriteIndex-titleInput input, [class*="title"] textarea, [class*="title"] input'
-      const titleEl = page.locator(titleSel).first()
-      await titleEl.waitFor({ timeout: 10000 })
-      await titleEl.click()
-      await titleEl.fill(content.title)
+      const titleSel = '.WriteIndex-titleInput input, .title-input textarea, [placeholder*="标题"]'
+      try {
+        const t = page.locator(titleSel).first()
+        await t.waitFor({ timeout: 10000 })
+        await t.click()
+        await t.fill(content.title)
+      } catch {}
 
-      // 填入正文 — 知乎支持内容编辑区
+      // 填入正文 — 知乎 React 编辑器，用 innerHTML
       const bodySels = [
         '.public-DraftEditor-content',
         '[data-contents="true"]',
         '.DraftEditor-root [contenteditable]',
-        '[class*="Editor"] [contenteditable]',
       ]
       let bodyFilled = false
       for (const sel of bodySels) {
@@ -64,7 +65,10 @@ export class ZhihuPublisher extends BasePublisher {
           const el = page.locator(sel).first()
           await el.waitFor({ timeout: 3000 })
           await el.click()
-          await page.keyboard.type(content.body, { delay: 2 })
+          await page.evaluate((el: Element, html: string) => {
+            (el as HTMLElement).innerHTML = html
+            el.dispatchEvent(new Event('input', { bubbles: true }))
+          }, await el.elementHandle(), content.body)
           bodyFilled = true
           break
         } catch { continue }
