@@ -83,25 +83,19 @@ export class WeChatPublisher extends BasePublisher {
         }, content.title)
       } catch {}
 
-      // 4. 正文 — 自检模式
+      // 4. 正文 — F12 验证选择器: #ueditor_0 > div > div > div > div > section > span
       try {
-        // ⬇️ 改这里试不同选择器
-        const BODY_SEL = 'body'
-        await page.evaluate((sel: string) => {
+        await page.evaluate((html: string) => {
           const f = document.querySelector('iframe') as HTMLIFrameElement | null
           const doc = f?.contentDocument
-          if (!doc) { (window as any).__diag = 'NO IFRAME' ; return }
-          const el = doc.querySelector(sel) as HTMLElement | null
-          if (el) {
-            el.focus()
-            ;(window as any).__diag = 'FOUND 1'
-          } else {
-            const ids = Array.from(doc.querySelectorAll('[id]')).map(e => e.id).slice(0, 20).join(',')
-            ;(window as any).__diag = 'FOUND 0 | IDs:' + ids
+          if (!doc) return
+          const sel = '#ueditor_0 > div > div > div > div > section'
+          const section = doc.querySelector(sel) as HTMLElement | null
+          if (section) {
+            section.innerHTML = html
+            section.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }))
           }
-        }, BODY_SEL)
-        const diag = await page.evaluate(() => (window as any).__diag || '')
-        fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'wechat-diag.txt'), diag, 'utf-8')
+        }, content.body)
       } catch {}
 
       // 5. 作者
