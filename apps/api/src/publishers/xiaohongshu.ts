@@ -84,23 +84,11 @@ export class XiaohongshuPublisher extends BasePublisher {
         await page.waitForTimeout(1000)
       } catch (e: any) { log += 'BOD_ERR:' + (e.message||'').slice(0,20) + ' ' }
 
-      // 发布
-      try {
-        const btn = page.locator('button:has-text("发布"), button:has-text("发表")').first()
-        await btn.waitFor({ timeout: 10000 })
-        await btn.click()
-        log += 'PUB '
-        await page.waitForTimeout(3000)
-        try { await page.locator('button:has-text("确定"), button:has-text("确认")').first().click({ timeout: 5000 }); log += 'CONFIRM ' } catch {}
-      } catch (e: any) { log += 'PUB_ERR:' + (e.message||'').slice(0,20) + ' ' }
-
-      await page.waitForTimeout(3000)
-      const url = page.url()
-      await browser.close()
-      log += 'DONE'
+      // 不自动发布，留给用户手动点击
+      log += 'READY_MANUAL_PUBLISH '
 
       fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'xhs-log.txt'), log, 'utf-8')
-      return { success: true, platform: PlatformType.XIAOHONGSHU, url, message: '发布完成' }
+      return { success: true, platform: PlatformType.XIAOHONGSHU, url: page.url(), message: '内容已填充，请手动发布' }
     } catch (err: any) {
       fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'xhs-log.txt'), log + ' FATAL:' + (err.message||'').slice(0,80), 'utf-8')
       return { success: false, platform: PlatformType.XIAOHONGSHU, message: `异常: ${err.message}` }

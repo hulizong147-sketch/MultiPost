@@ -1,13 +1,9 @@
 /**
- * B站专栏 Publisher — v4 iframe 切换版
+ * B站专栏 Publisher — v6 标题+封面修复版
  *
- * 诊断结果（v3）：
- *   IFRAMES[1] = member.bilibili.com/york/read-editor?  ← 编辑器 iframe
- *   INPUTS = []  → 主页面没有任何 input
- *   BUTTONS = [] → 主页面没有任何 button
- *   EDITOR_INFO = {} → 主页面没有任何编辑器元素
- *
- * 结论：标题、正文、发布按钮全部在 read-editor iframe 里！
+ * 修复：
+ *   1. 标题：textarea.title-input__inner，用原生 setter + dispatchEvent 设值
+ *   2. 封面：开关和上传区都在 iframe 内，先点"发布设置"展开面板
  */
 import { PlatformType } from '@multipost/shared'
 import type { PlatformContent } from '@multipost/shared'
@@ -129,43 +125,31 @@ export class BilibiliPublisher extends BasePublisher {
         log += 'EDITOR=' + JSON.stringify(editorInfo) + ' '
       } catch { log += 'EDITOR_ERR ' }
 
-      // ========== 5. 填充标题（在 iframe 内） ==========
+      // ========== 5. 填充标题（在 iframe 内，textarea.title-input__inner）==========
       try {
-        // 根据截图，标题 placeholder 是 "请输入标题（建议30字以内）"
-        const titleSels = [
-          'input[placeholder*="标题"]',
-          '[placeholder*="标题"] input',
-          '[placeholder*="标题"]',
-          'input[type="text"]',
-          'textarea[placeholder*="标题"]',
-        ]
+        // 标题是 textarea，fill() 可能不触发 Vue 绑定，用 evaluate 直接设值
         let titleDone = false
-        for (const sel of titleSels) {
-          try {
-            const el = editorFrame.locator(sel).first()
-            if (await el.isVisible({ timeout: 2000 })) {
-              await el.click()
-              await el.fill('')
-              await el.fill(content.title || '')
-              titleDone = true
-              log += 'TITLE[' + sel.slice(0, 30) + '] '
-              break
+        try {
+          await editorFrame.evaluate((text: string) => {
+            const el = document.querySelector('.title-input__inner') as HTMLTextAreaElement | null
+            if (el) {
+              // 用原生 setter 设值 + 触发 input/change 事件
+              const nativeSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+              nativeSetter!.call(el, text)
+              el.dispatchEvent(new Event('input', { bubbles: true }))
+              el.dispatchEvent(new Event('change', { bubbles: true }))
             }
-          } catch {}
-        }
+          }, content.title || '')
+          titleDone = true
+          log += 'TITLE_TEXTAREA '
+        } catch {}
 
         if (!titleDone) {
-          // 兜底：找 contenteditable 作为标题
+          // 兜底：fill 方式
           try {
-            const ceditables = editorFrame.locator('[contenteditable="true"]')
-            const count = await ceditables.count()
-            if (count > 0) {
-              // 第一个 contenteditable 可能是标题
-              await ceditables.first().click()
-              await ceditables.first().fill(content.title || '')
-              titleDone = true
-              log += 'TITLE_FIRST_EDITABLE '
-            }
+            await editorFrame.locator('.title-input__inner').first().fill(content.title || '', { timeout: 3000 })
+            titleDone = true
+            log += 'TITLE_FILL '
           } catch {}
         }
         if (!titleDone) log += 'TITLE_NONE '
@@ -186,27 +170,11 @@ export class BilibiliPublisher extends BasePublisher {
           await page.waitForTimeout(300)
           log += 'CLEARED '
 
-          // 正文 HTML
-          let insertHtml = content.body || ''
-
-          // 封面图插在最前面
-          const imgDir = path.join(os.homedir(), '.multipost', 'images')
-          if (fs.existsSync(imgDir)) {
-            const files = fs.readdirSync(imgDir).filter(f => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
-            if (files.length > 0) {
-              const imgPath = path.join(imgDir, files[0])
-              const imgBuf = fs.readFileSync(imgPath)
-              const ext = path.extname(files[0]).slice(1).toLowerCase()
-              const mime = ext === 'jpg' ? 'jpeg' : ext
-              const b64 = 'data:image/' + mime + ';base64,' + imgBuf.toString('base64')
-              insertHtml = '<p><img src="' + b64 + '" /></p>' + insertHtml
-              log += 'COVER_PREPEND '
-            }
-          }
-
+          // 正文（封面不放这里了，放右边自定义封面区）
+          const bodyHtml = content.body || ''
           await editorFrame.evaluate((html: string) => {
             (window as any).editor.commands.insertContent(html)
-          }, insertHtml)
+          }, bodyHtml)
           await page.waitForTimeout(2000)
           log += 'BODY_EDITOR '
 
@@ -227,33 +195,7 @@ export class BilibiliPublisher extends BasePublisher {
               })
               await page.waitForTimeout(200)
 
-              // 封面图 base64 插入
-              const imgDir = path.join(os.homedir(), '.multipost', 'images')
-              if (fs.existsSync(imgDir)) {
-                const files = fs.readdirSync(imgDir).filter(f => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
-                if (files.length > 0) {
-                  const imgPath = path.join(imgDir, files[0])
-                  const imgBuf = fs.readFileSync(imgPath)
-                  const ext = path.extname(files[0]).slice(1).toLowerCase()
-                  const mime = ext === 'jpg' ? 'jpeg' : ext
-                  const b64 = 'data:image/' + mime + ';base64,' + imgBuf.toString('base64')
-
-                  await editorFrame.evaluate((b64: string) => {
-                    const pm = document.querySelector('.ProseMirror')
-                    if (pm) {
-                      const img = document.createElement('img')
-                      img.src = b64
-                      img.style.cssText = 'max-width:100%;display:block'
-                      pm.insertBefore(img, pm.firstChild)
-                      const br = document.createElement('br')
-                      pm.appendChild(br)
-                    }
-                  }, b64)
-                  log += 'COVER_DOM '
-                }
-              }
-
-              // 正文用 ClipboardEvent 粘贴
+              // 正文用 ClipboardEvent 粘贴（封面不放正文里了）
               await editorFrame.evaluate((html: string) => {
                 const d = document.createElement('div')
                 d.innerHTML = html
@@ -291,59 +233,92 @@ export class BilibiliPublisher extends BasePublisher {
         }
       } catch (e: any) { log += 'BODY_ERR:' + (e.message || '').slice(0, 50) + ' ' }
 
-      // ========== 7. 发布（在 iframe 内） ==========
+      // ========== 6.5 封面上传（在 iframe 内，不在主页面）==========
+      // 封面开关和上传区都在 iframe 的右侧"发布设置"面板里
       try {
-        const pubSels = [
-          'button:has-text("发布")',
-          '[class*="publish"]',
-          '[class*="submit"]',
-        ]
-        let pubDone = false
-        for (const sel of pubSels) {
-          try {
-            const el = editorFrame.locator(sel).first()
-            const text = await el.textContent()
-            if (await el.isVisible({ timeout: 3000 }) && (text?.includes('发布') || text?.includes('提交') || text?.includes('发表'))) {
-              await el.click()
-              pubDone = true
-              log += 'PUB[' + sel.slice(0, 25) + '] '
-              break
-            }
-          } catch {}
-        }
-        if (!pubDone) {
-          // 兜底：找 iframe 内文本含"发布"的可见 button
-          const btns = editorFrame.locator('button')
-          const count = await btns.count()
-          for (let i = 0; i < count; i++) {
-            const b = btns.nth(i)
+        const imgDir = path.join(os.homedir(), '.multipost', 'images')
+        if (fs.existsSync(imgDir)) {
+          const files = fs.readdirSync(imgDir).filter(f => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
+          if (files.length > 0) {
+            const imgPath = path.join(imgDir, files[0])
+
+            // Step 1: 点击 iframe 内"发布设置"按钮（展开右侧面板）
             try {
-              const t = await b.textContent()
-              if ((t?.includes('发布') || t?.includes('发表')) && await b.isVisible()) {
-                await b.click()
-                log += 'PUB_BTN[' + i + '] '
-                pubDone = true
-                break
+              const settingsBtn = editorFrame.locator('button:has-text("发布设置")').first()
+              if (await settingsBtn.isVisible({ timeout: 3000 })) {
+                await settingsBtn.click()
+                log += 'SETTINGS_OPEN '
+                await page.waitForTimeout(1000)
               }
-            } catch {}
+            } catch { log += 'SETTINGS_NONE ' }
+
+            // Step 2: 打开"自定义封面"开关（用户提供的 selector，在 iframe 内）
+            const switchSels = [
+              '#app > div.body > div.main > div:nth-child(4) > div > div.form > div:nth-child(2) > div > div.form-item-center > div.vui_switch--switch > div',
+              '[class*="vui_switch"] > div',
+              '[class*="switch"]',
+            ]
+            let switched = false
+            for (const sel of switchSels) {
+              try {
+                const sw = editorFrame.locator(sel).first()
+                if (await sw.isVisible({ timeout: 2000 })) {
+                  await sw.click()
+                  switched = true
+                  log += 'SWITCH[' + sel.slice(0, 35) + '] '
+                  break
+                }
+              } catch {}
+            }
+            if (!switched) log += 'SWITCH_NONE '
+            await page.waitForTimeout(1000)
+
+            // Step 3: 点"添加封面"按钮 + filechooser 拦截上传
+            const addSels = ['text=添加封面', 'text=上传封面', 'text=选择图片']
+            let uploaded = false
+            for (const sel of addSels) {
+              try {
+                const btn = editorFrame.locator(sel).first()
+                if (await btn.isVisible({ timeout: 2000 })) {
+                  const [fc] = await Promise.all([
+                    page.waitForEvent('filechooser', { timeout: 8000 }),
+                    btn.click()
+                  ])
+                  await fc.setFiles(imgPath)
+                  uploaded = true
+                  log += 'COVER[' + sel.slice(0, 15) + '] '
+                  break
+                }
+              } catch {}
+            }
+            if (!uploaded) {
+              // 兜底：直接 setInputFiles
+              try {
+                await editorFrame.locator('input[type="file"]').first().setInputFiles(imgPath, { timeout: 5000 })
+                log += 'COVER_FI '
+              } catch { log += 'COVER_NONE ' }
+            }
+            await page.waitForTimeout(3000)
+
+            // Step 4: 裁剪弹窗点"确定"
+            try {
+              // 裁剪弹窗可能在 iframe 内
+              const confirmBtn = editorFrame.locator('button:has-text("确定"), button:has-text("确认"), button:has-text("完成")').first()
+              if (await confirmBtn.isVisible({ timeout: 3000 })) {
+                await confirmBtn.click()
+                log += 'CROP_CONFIRM '
+                await page.waitForTimeout(2000)
+              }
+            } catch { log += 'NO_CROP ' }
           }
         }
-        if (!pubDone) log += 'PUB_NONE '
+      } catch (e: any) { log += 'COVER_UP_ERR:' + (e.message || '').slice(0, 30) + ' ' }
 
-        await page.waitForTimeout(3000)
-        try {
-          await editorFrame.locator('button:has-text("确定"), button:has-text("确认")').first().click({ timeout: 5000 })
-          log += 'CONFIRM '
-        } catch { log += 'NO_CONFIRM ' }
-      } catch (e: any) { log += 'PUB_ERR:' + (e.message || '').slice(0, 30) + ' ' }
-
-      await page.waitForTimeout(3000)
-      const finalUrl = page.url()
-      await browser.close()
-      log += 'DONE URL=' + finalUrl.slice(0, 80)
+      // 不自动发布，留给用户手动点击
+      log += 'READY_MANUAL_PUBLISH '
 
       fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'bili-log.txt'), log, 'utf-8')
-      return { success: true, platform: PlatformType.BILIBILI, url: finalUrl, message: '发布完成' }
+      return { success: true, platform: PlatformType.BILIBILI, url: page.url(), message: '内容已填充，请手动发布' }
 
     } catch (err: any) {
       fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'bili-log.txt'),

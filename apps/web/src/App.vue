@@ -28,8 +28,6 @@ function onInsertImage(md: string) { editorRef.value?.insertAtCursor(md) }
         </div>
       </div>
       <div class="header-actions">
-        <button class="ghost-btn" @click="store.loadSample(editorRef)">Sample</button>
-        <span class="divider" />
         <PlatformSelector />
         <span class="divider" />
         <TransformButton />
@@ -43,9 +41,7 @@ function onInsertImage(md: string) { editorRef.value?.insertAtCursor(md) }
       </aside>
       <section class="preview-pane">
         <div v-if="store.selectedPlatforms.length === 0" class="empty-state">
-          <p class="empty-title">Select platforms above</p>
-          <p class="empty-desc">or</p>
-          <button class="empty-cta" @click="store.loadSample(editorRef)">Load sample content</button>
+          <p class="empty-title">Select platforms above to preview</p>
         </div>
         <PreviewGrid v-else />
       </section>

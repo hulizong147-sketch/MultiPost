@@ -53,25 +53,37 @@ export class ZhihuPublisher extends BasePublisher {
         log += 'TITLE '
       } catch (e: any) { log += 'TIT_ERR:' + (e.message||'').slice(0,25) + ' ' }
 
-      // 正文 — 模拟 paste 事件（Draft.js 原生方式）
+      // 正文 — Ctrl+A + Delete + Ctrl+V（Draft.js 认键盘粘贴）
       try {
         const el = page.locator('.public-DraftEditor-content').first()
         await el.waitFor({ timeout: 10000 })
         await el.click()
-        await page.waitForTimeout(500)
+        await page.waitForTimeout(300)
+
+        // 全选删除
+        await page.keyboard.press('Control+a')
+        await page.keyboard.press('Backspace')
+        await page.waitForTimeout(200)
+
+        // 把 HTML 写入隐藏 div，copy 到剪贴板
         await page.evaluate((html: string) => {
-          const el = document.querySelector('.public-DraftEditor-content')
-          if (!el) return
-          el.innerHTML = ''
-          el.focus()
-          const dt = new DataTransfer()
-          dt.setData('text/html', html)
-          dt.setData('text/plain', html.replace(/<[^>]+>/g, ''))
-          const ev = new ClipboardEvent('paste', { bubbles: true, clipboardData: dt })
-          el.dispatchEvent(ev)
-          el.dispatchEvent(new Event('input', { bubbles: true }))
-        }, content.body)
+          const d = document.createElement('div')
+          d.contentEditable = 'true'
+          d.innerHTML = html
+          d.style.cssText = 'position:fixed;left:-9999px;top:-9999px'
+          document.body.appendChild(d)
+          d.focus()
+          document.execCommand('selectAll')
+          document.execCommand('copy')
+          document.body.removeChild(d)
+        }, content.body || '')
+
+        // Ctrl+V 粘贴
+        await el.click()
+        await page.waitForTimeout(200)
+        await page.keyboard.press('Control+v')
         await page.waitForTimeout(2000)
+
         const charCount = await page.evaluate(() => {
           const el = document.querySelector('.public-DraftEditor-content')
           return (el as HTMLElement)?.innerText?.length || 0
@@ -79,36 +91,13 @@ export class ZhihuPublisher extends BasePublisher {
         log += 'BODY chars=' + charCount + ' '
       } catch (e: any) { log += 'BOD_ERR:' + (e.message||'').slice(0,25) + ' ' }
 
-      // 封面
-      try {
-        const imgDir = path.join(os.homedir(), '.multipost', 'images')
-        const files = fs.readdirSync(imgDir).filter(f => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
-        if (files.length > 0) {
-          await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
-          await page.waitForTimeout(1000)
-          await page.locator('input[type="file"]').first().setInputFiles(path.join(imgDir, files[0]), { timeout: 5000 })
-          log += 'COVER '
-          await page.waitForTimeout(2000)
-        }
-      } catch (e: any) { log += 'COV_ERR:' + (e.message||'').slice(0,25) + ' ' }
+      // 封面：知乎弹窗流程太复杂，暂时跳过，用户手动设置
 
-      // 发布
-      try {
-        const btn = page.locator('button:has-text("发布"), button:has-text("发表")').first()
-        await btn.waitFor({ timeout: 10000 })
-        await btn.click()
-        log += 'PUB '
-        await page.waitForTimeout(3000)
-        try { await page.locator('button:has-text("确认发布"), button:has-text("确定")').first().click({ timeout: 5000 }); log += 'CONFIRM ' } catch {}
-      } catch (e: any) { log += 'PUB_ERR:' + (e.message||'').slice(0,25) + ' ' }
-
-      await page.waitForTimeout(3000)
-      const url = page.url()
-      await browser.close()
-      log += 'DONE'
+      // 不自动发布，留给用户手动点击
+      log += 'READY_MANUAL_PUBLISH '
 
       fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'zhihu-log.txt'), log, 'utf-8')
-      return { success: true, platform: PlatformType.ZHIHU, url, message: '知乎发布完成' }
+      return { success: true, platform: PlatformType.ZHIHU, url: page.url(), message: '内容已填充，请手动发布' }
     } catch (err: any) {
       fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'zhihu-log.txt'), log + ' FATAL:' + (err.message||'').slice(0,80), 'utf-8')
       return { success: false, platform: PlatformType.ZHIHU, message: `知乎异常: ${err.message}` }

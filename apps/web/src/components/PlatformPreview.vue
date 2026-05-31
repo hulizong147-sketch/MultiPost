@@ -90,18 +90,37 @@ async function doPublish() {
       </div>
     </div>
 
-    <!-- 知乎样式 -->
+    <!-- 知乎样式 — 手机框模拟 -->
     <div v-else-if="isZhihu" class="body-zhihu">
-      <h1 class="zh-heading">{{ content.title }}</h1>
-      <div class="zh-meta">
-        <span class="zh-author">{{ store.accounts.zhihu?.username || '未设置账号' }}</span>
-        <span class="zh-time">{{ new Date().toLocaleDateString('zh-CN') }}</span>
-        <span class="zh-stat">👍 {{ 100 + content.body.length }}</span>
-        <span class="zh-stat">💬 {{ Math.floor(content.body.length / 20) }}</span>
-      </div>
-      <div class="zh-body" v-html="content.body" />
-      <div v-if="content.tags.length" class="zh-tags">
-        <span v-for="t in content.tags" :key="t" class="zh-tag">{{ t }}</span>
+      <div class="zh-phone">
+        <div class="zh-statusbar"><span>9:41</span><span>🔋</span></div>
+        <div class="zh-navbar">
+          <span class="zh-back">&#8592;</span>
+          <span class="zh-nav-title">知乎</span>
+          <span class="zh-search">&#9906;</span>
+        </div>
+        <div class="zh-article">
+          <h1 class="zh-heading">{{ content.title }}</h1>
+          <div class="zh-meta">
+            <div class="zh-avatar">{{ (store.accounts.zhihu?.username || '知')[0] }}</div>
+            <div class="zh-meta-text">
+              <span class="zh-author">{{ store.accounts.zhihu?.username || '匿名用户' }}</span>
+              <span class="zh-time">{{ new Date().toLocaleDateString('zh-CN') }}</span>
+            </div>
+            <button class="zh-follow-btn">+ 关注</button>
+          </div>
+          <div class="zh-body" v-html="content.body" />
+          <div v-if="content.tags.length" class="zh-tags">
+            <span v-for="t in content.tags" :key="t" class="zh-tag">{{ t }}</span>
+          </div>
+          <div class="zh-footer-actions">
+            <div class="zh-act">▲ {{ 100 + content.body.length }}</div>
+            <div class="zh-act">▼</div>
+            <div class="zh-act">💬 {{ Math.floor(content.body.length / 20) }}</div>
+            <div class="zh-act">&#9733;</div>
+            <div class="zh-act">↗ 分享</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -183,18 +202,39 @@ async function doPublish() {
       </div>
     </div>
 
-    <!-- B站样式 -->
+    <!-- B站样式 — 手机框模拟 -->
     <div v-else-if="isBili" class="body-bili">
-      <h1 class="bi-heading">{{ content.title }}</h1>
-      <div class="bi-meta">
-        <span class="bi-author">{{ store.accounts.bilibili?.username || '未设置账号' }}</span>
-        <span class="bi-time">{{ new Date().toLocaleDateString('zh-CN') }}</span>
-        <span class="bi-stat">👁 {{ 500 + content.body.length }}</span>
-        <span class="bi-stat">⭐ {{ Math.floor(content.body.length / 4) }}</span>
-      </div>
-      <div class="bi-body" v-html="content.body" />
-      <div v-if="content.tags.length" class="bi-tags">
-        <span v-for="t in content.tags" :key="t" class="bi-tag">{{ t }}</span>
+      <div class="bi-phone">
+        <div class="bi-statusbar"><span>9:41</span><span>🔋</span></div>
+        <div class="bi-navbar">
+          <span class="bi-back">&#8592;</span>
+          <span class="bi-nav-title">专栏</span>
+          <span class="bi-more">&#8942;</span>
+        </div>
+        <div class="bi-article">
+          <div class="bi-cover" v-if="coverImage">
+            <img :src="coverImage" class="bi-cover-img" />
+          </div>
+          <h1 class="bi-heading">{{ content.title }}</h1>
+          <div class="bi-meta">
+            <div class="bi-avatar">{{ (store.accounts.bilibili?.username || 'UP')[0] }}</div>
+            <div class="bi-meta-text">
+              <span class="bi-author">{{ store.accounts.bilibili?.username || 'UP主' }}</span>
+              <span class="bi-time">{{ new Date().toLocaleDateString('zh-CN') }}</span>
+            </div>
+            <button class="bi-follow-btn">+ 关注</button>
+          </div>
+          <div class="bi-body" v-html="content.body" />
+          <div v-if="content.tags.length" class="bi-tags">
+            <span v-for="t in content.tags" :key="t" class="bi-tag">{{ t }}</span>
+          </div>
+          <div class="bi-footer-actions">
+            <div class="bi-act">👍 {{ 500 + content.body.length }}</div>
+            <div class="bi-act">🪙 {{ Math.floor(content.body.length / 10) }}</div>
+            <div class="bi-act">⭐ {{ Math.floor(content.body.length / 4) }}</div>
+            <div class="bi-act">↗ 分享</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -249,18 +289,32 @@ async function doPublish() {
 .wx-divider { height: 1px; background: #eee; margin-bottom: 12px; }
 .wx-like-row { display: flex; justify-content: space-between; font-size: 11px; color: #bbb; }
 
-/* ===== 知乎样式 ===== */
-.body-zhihu { padding: 20px 18px; overflow-y: auto; flex: 1; background: #fff; color: #1a1a1a; border-radius: 0 0 14px 14px; }
-.zh-heading { font-size: 20px; font-weight: 700; line-height: 1.4; margin: 0 0 12px; color: #1a1a1a; }
-.zh-meta { display: flex; gap: 14px; font-size: 12px; color: #999; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f0f0f0; }
-.zh-author { font-weight: 500; color: #333; }
-.zh-body { font-size: 14px; color: #333; line-height: 1.85; }
-.zh-body :deep(p) { margin-bottom: 12px; }
+/* ===== 知乎样式 — 手机框 ===== */
+.body-zhihu { padding: 10px; overflow-y: auto; flex: 1; display: flex; justify-content: center; }
+.zh-phone { width: 100%; max-width: 360px; border: 3px solid #1a1a1a; border-radius: 36px; background: #fff; overflow: hidden; box-shadow: 0 12px 48px rgba(0,0,0,0.2); }
+.zh-statusbar { display: flex; justify-content: space-between; padding: 10px 20px 4px; font-size: 10px; font-weight: 600; color: #1a1a1a; background: #fff; }
+.zh-navbar { display: flex; align-items: center; justify-content: space-between; padding: 6px 14px 8px; border-bottom: 1px solid #f0f0f0; }
+.zh-back { font-size: 18px; color: #06f; cursor: pointer; }
+.zh-nav-title { font-size: 14px; font-weight: 600; color: #1a1a1a; }
+.zh-search { font-size: 16px; color: #8590a6; }
+.zh-article { padding: 16px 16px 20px; }
+.zh-heading { font-size: 17px; font-weight: 700; line-height: 1.45; margin: 0 0 10px; color: #1a1a1a; }
+.zh-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #f6f6f6; }
+.zh-avatar { width: 30px; height: 30px; border-radius: 50%; background: #06f; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+.zh-meta-text { display: flex; flex-direction: column; gap: 1px; flex: 1; }
+.zh-author { font-size: 12px; font-weight: 600; color: #1a1a1a; }
+.zh-time { font-size: 10px; color: #999; }
+.zh-follow-btn { padding: 3px 12px; border: 1px solid #06f; border-radius: 14px; background: transparent; color: #06f; font-size: 10px; cursor: pointer; }
+.zh-body { font-size: 13px; color: #333; line-height: 1.85; }
+.zh-body :deep(p) { margin-bottom: 10px; }
 .zh-body :deep(strong) { font-weight: 600; }
-.zh-body :deep(blockquote) { border-left: 3px solid #06f; padding: 4px 12px; color: #666; margin: 10px 0; background: #f8f9ff; }
-.zh-body :deep(code) { background: #f6f6f6; padding: 2px 5px; border-radius: 3px; font-size: 13px; }
-.zh-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
-.zh-tag { padding: 4px 10px; background: #f0f6ff; border-radius: 20px; font-size: 12px; color: #06f; }
+.zh-body :deep(blockquote) { border-left: 3px solid #06f; padding: 4px 10px; color: #666; margin: 8px 0; background: #f8f9ff; font-size: 12px; }
+.zh-body :deep(code) { background: #f6f6f6; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+.zh-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.zh-tag { padding: 3px 10px; background: #f0f6ff; border-radius: 20px; font-size: 11px; color: #06f; }
+.zh-footer-actions { display: flex; justify-content: space-around; align-items: center; padding: 12px 0 4px; margin-top: 14px; border-top: 1px solid #f0f0f0; }
+.zh-act { font-size: 11px; color: #8590a6; display: flex; align-items: center; gap: 2px; }
+.zh-act:first-child { color: #06f; font-weight: 600; }
 
 /* ===== 小红书 手机框样式 ===== */
 .body-xhs { padding: 12px; overflow-y: auto; flex: 1; display: flex; justify-content: center; }
@@ -306,18 +360,34 @@ async function doPublish() {
 .xhs-act:nth-child(2) .xhs-icon { color: #ffb02c; }
 .xhs-act:nth-child(3) .xhs-icon { color: #3b5bdb; }
 
-/* ===== B站样式 ===== */
-.body-bili { padding: 20px 18px; overflow-y: auto; flex: 1; background: #fff; color: #18191c; border-radius: 0 0 14px 14px; }
-.bi-heading { font-size: 20px; font-weight: 700; line-height: 1.4; margin: 0 0 10px; }
-.bi-meta { display: flex; gap: 12px; font-size: 12px; color: #9499a0; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
-.bi-author { color: #00aeec; }
-.bi-body { font-size: 14px; color: #18191c; line-height: 1.85; }
-.bi-body :deep(p) { margin-bottom: 12px; }
+/* ===== B站样式 — 手机框 ===== */
+.body-bili { padding: 10px; overflow-y: auto; flex: 1; display: flex; justify-content: center; }
+.bi-phone { width: 100%; max-width: 360px; border: 3px solid #1a1a1a; border-radius: 36px; background: #fff; overflow: hidden; box-shadow: 0 12px 48px rgba(0,0,0,0.2); }
+.bi-statusbar { display: flex; justify-content: space-between; padding: 10px 20px 4px; font-size: 10px; font-weight: 600; color: #1a1a1a; background: #fff; }
+.bi-navbar { display: flex; align-items: center; justify-content: space-between; padding: 6px 14px 8px; background: #fb7299; }
+.bi-back { font-size: 18px; color: #fff; cursor: pointer; }
+.bi-nav-title { font-size: 14px; font-weight: 600; color: #fff; }
+.bi-more { font-size: 18px; color: #fff; }
+.bi-article { padding: 14px 16px 20px; }
+.bi-cover { margin: -14px -16px 12px; height: 170px; overflow: hidden; background: linear-gradient(135deg, #fb7299, #ffb6c1); }
+.bi-cover-img { width: 100%; height: 100%; object-fit: cover; }
+.bi-heading { font-size: 16px; font-weight: 700; line-height: 1.45; margin: 0 0 10px; color: #18191c; }
+.bi-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+.bi-avatar { width: 28px; height: 28px; border-radius: 50%; background: #fb7299; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+.bi-meta-text { display: flex; flex-direction: column; gap: 1px; flex: 1; }
+.bi-author { font-size: 11px; font-weight: 600; color: #18191c; }
+.bi-time { font-size: 10px; color: #9499a0; }
+.bi-follow-btn { padding: 3px 12px; border: none; border-radius: 14px; background: #fb7299; color: #fff; font-size: 10px; cursor: pointer; }
+.bi-body { font-size: 13px; color: #18191c; line-height: 1.85; }
+.bi-body :deep(p) { margin-bottom: 10px; }
 .bi-body :deep(strong) { font-weight: 600; }
-.bi-body :deep(code) { background: #f6f7f8; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #e45d8b; }
-.bi-body :deep(pre) { background: #1a1a2e; color: #e4e4ec; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12px; }
-.bi-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
-.bi-tag { padding: 4px 10px; background: #f6f7f8; border-radius: 6px; font-size: 12px; color: #9499a0; }
+.bi-body :deep(code) { background: #f6f7f8; padding: 1px 5px; border-radius: 4px; font-size: 11px; color: #e45d8b; }
+.bi-body :deep(pre) { background: #1a1a2e; color: #e4e4ec; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 11px; }
+.bi-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.bi-tag { padding: 3px 8px; background: #f6f7f8; border-radius: 6px; font-size: 10px; color: #9499a0; }
+.bi-footer-actions { display: flex; justify-content: space-around; align-items: center; padding: 12px 0 4px; margin-top: 14px; border-top: 1px solid #f0f0f0; }
+.bi-act { font-size: 11px; color: #9499a0; display: flex; align-items: center; gap: 2px; }
+.bi-act:first-child { color: #fb7299; font-weight: 600; }
 
 /* ===== 头条样式 ===== */
 .body-toutiao { padding: 16px 18px; overflow-y: auto; flex: 1; background: #fff; color: #222; border-radius: 0 0 14px 14px; }
