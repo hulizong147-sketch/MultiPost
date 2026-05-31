@@ -118,27 +118,33 @@ export class WeChatPublisher extends BasePublisher {
       // 5. 作者
       try { await page.locator('#author').fill(content.title.slice(0, 8), { timeout: 3000 }) } catch {}
 
-      // 6. 封面 — 拖拽或选择封面 → 从图片库选择 → 上传文件 → 下一步
+      // 6. 封面 — 诊断模式，写每步结果
+      const imgDir2 = path.join(os.homedir(), '.multipost', 'images')
+      let coverLog = 'start'
       try {
-        const imgDir2 = path.join(os.homedir(), '.multipost', 'images')
         const files = fs.readdirSync(imgDir2).filter((f: string) => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
+        coverLog = 'files:' + files.length
         if (files.length > 0) {
           const fp = path.join(imgDir2, files[0])
-          // 1. 点封面区域唤出菜单
+          // 1
           await page.locator('text=拖拽或选择封面').click({ timeout: 5000 })
+          coverLog = '1-clicked-cover'
           await page.waitForTimeout(500)
-          // 2. 点「从图片库选择」
+          // 2
           await page.locator('#js_cover_null > ul > li:nth-child(2) > a').click({ timeout: 5000 })
+          coverLog = '2-clicked-library'
           await page.waitForTimeout(1000)
-          // 3. 直接 setInputFiles 给上传 input
+          // 3
           await page.locator('input[type="file"]').setInputFiles(fp, { timeout: 5000 })
+          coverLog = '3-setFiles'
           await page.waitForTimeout(2000)
-          // 4. 点「下一步」（F12 实测选择器）
+          // 4
           const nextBtn = '#vue_app > mp-image-product-dialog > div > div.weui-desktop-dialog__wrp.weui-desktop-dialog_img-picker > div > div.weui-desktop-dialog__ft > div:nth-child(1) > button'
           await page.locator(nextBtn).click({ timeout: 5000 })
-          await page.waitForTimeout(1000)
+          coverLog = '4-done'
         }
-      } catch {}
+      } catch (e: any) { coverLog = 'ERR:' + (e?.message||'').slice(0,60) }
+      fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'cover-log.txt'), coverLog, 'utf-8')
 
       return { success: true, platform: PlatformType.WECHAT_MP, message: '公众号发布完成' }
 
