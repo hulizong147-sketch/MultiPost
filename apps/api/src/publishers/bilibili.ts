@@ -1,15 +1,11 @@
 /**
- * B站专栏 Publisher — Playwright 全自动发布
- *
- * B站专栏编辑器: https://member.bilibili.com/v2#/upload-manager/article
- * 主编编辑器: https://member.bilibili.com/platform/upload/text/edit
- *
- * B站专栏支持富文本，适配器已输出 HTML + inline style。
+ * B站专栏 Publisher — 全诊断版
  */
 import { PlatformType } from '@multipost/shared'
 import type { PlatformContent } from '@multipost/shared'
 import path from 'path'
 import os from 'os'
+import fs from 'fs'
 import { BasePublisher, type PublishResult } from './base.js'
 
 const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
@@ -22,102 +18,95 @@ export class BilibiliPublisher extends BasePublisher {
   async publish(content: PlatformContent): Promise<PublishResult> {
     const { chromium } = await import('playwright')
     let browser: any = null
+    let log = ''
 
     try {
       browser = await chromium.launchPersistentContext(USER_DATA_DIR, {
-        headless: false,
-        executablePath: CHROME_PATH,
+        headless: false, executablePath: CHROME_PATH,
         viewport: { width: 1280, height: 900 },
         args: BasePublisher.CHROME_ARGS,
       })
       const page = browser.pages()[0]
 
-      // 1. 打开 B站专栏编辑器
-      await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 20000 })
+      await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 30000 })
       await page.waitForTimeout(3000)
+      log += 'NAV '
 
-      // 2. 检测登录
       if (page.url().includes('passport') || page.url().includes('login')) {
-        console.log('🔄 请在浏览器中登录 B站...')
-        const loggedIn = await this.waitForLogin(page, ['passport', 'login'])
+        const loggedIn = await this.waitForLogin(page, ['passport', 'login'], 120)
         if (!loggedIn) {
+          fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'bili-log.txt'), log + 'LOGIN_TIMEOUT', 'utf-8')
           await browser.close()
-          return { success: false, platform: PlatformType.BILIBILI, message: 'B站登录超时（3分钟），请重试' }
+          return { success: false, platform: PlatformType.BILIBILI, message: '登录超时' }
         }
         await page.goto(EDITOR_URL, { waitUntil: 'domcontentloaded', timeout: 20000 })
+        await page.waitForTimeout(3000)
+      }
+      log += 'LOGIN '
+
+      // 标题
+      try {
+        const t = page.locator('input[placeholder*="标题"], [class*="title"] input').first()
+        await t.waitFor({ timeout: 10000 })
+        await t.fill(content.title)
+        log += 'TITLE '
+      } catch (e: any) { log += 'TIT_ERR:' + (e.message||'').slice(0,20) + ' ' }
+
+      // 正文
+      try {
+        const el = page.locator('[contenteditable="true"], .ql-editor').first()
+        await el.waitFor({ timeout: 10000 })
+        await el.click()
+        await page.waitForTimeout(500)
+        await page.evaluate((html: string) => {
+          const d = document.createElement('div'); d.contentEditable = 'true'; d.innerHTML = html
+          d.style.cssText = 'position:fixed;left:-9999px'
+          document.body.appendChild(d); d.focus()
+          document.execCommand('selectAll'); document.execCommand('copy')
+          document.body.removeChild(d)
+        }, content.body)
+        await page.waitForTimeout(300)
+        await el.click()
+        await page.keyboard.press('Control+v')
         await page.waitForTimeout(2000)
-      }
+        const cc = await page.evaluate(() => {
+          const e = document.querySelector('[contenteditable="true"], .ql-editor')
+          return (e as HTMLElement)?.innerText?.length || 0
+        })
+        log += 'BODY chars=' + cc + ' '
+      } catch (e: any) { log += 'BOD_ERR:' + (e.message||'').slice(0,20) + ' ' }
 
-      // 3. 填入标题
-      const titleSel = 'input[placeholder*="标题"], .title-input input, #title'
-      const titleEl = page.locator(titleSel).first()
-      await titleEl.waitFor({ timeout: 10000 })
-      await titleEl.click()
-      await titleEl.fill(content.title)
+      // 封面
+      try {
+        const imgDir = path.join(os.homedir(), '.multipost', 'images')
+        const files = fs.readdirSync(imgDir).filter(f => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
+        if (files.length > 0) {
+          await page.locator('input[type="file"]').first().setInputFiles(path.join(imgDir, files[0]), { timeout: 5000 })
+          log += 'COVER '
+          await page.waitForTimeout(2000)
+        }
+      } catch (e: any) { log += 'COV_ERR:' + (e.message||'').slice(0,20) + ' ' }
 
-      // 4. 填入正文（B站专栏支持富文本编辑器）
-      // 尝试多种编辑区选择器
-      const bodySels = [
-        '[contenteditable="true"]',
-        '.ql-editor',
-        '.editor-content',
-        '.article-editor [contenteditable]',
-      ]
-      let bodyFilled = false
-      for (const sel of bodySels) {
-        try {
-          const el = page.locator(sel).first()
-          await el.waitFor({ timeout: 3000 })
-          await el.click()
-          // 用 innerHTML 注入（B站适配器输出的是 HTML）
-          await page.evaluate((s: string, html: string) => {
-            const el = document.querySelector(s)
-            if (el) (el as HTMLElement).innerHTML = html
-          }, sel, content.body)
-          bodyFilled = true
-          break
-        } catch { continue }
-      }
-      if (!bodyFilled) {
-        await browser.close()
-        return { success: false, platform: PlatformType.BILIBILI, message: '未找到 B站正文编辑区，页面结构可能已变更' }
-      }
+      // 发布
+      try {
+        const btn = page.locator('button:has-text("发布"), button:has-text("提交"), button:has-text("发表")').first()
+        await btn.waitFor({ timeout: 10000 })
+        await btn.click()
+        log += 'PUB '
+        await page.waitForTimeout(3000)
+        try { await page.locator('button:has-text("确定"), button:has-text("确认")').first().click({ timeout: 5000 }); log += 'CONFIRM ' } catch {}
+      } catch (e: any) { log += 'PUB_ERR:' + (e.message||'').slice(0,20) + ' ' }
 
-      // 5. 填入标签
-      if (content.tags.length > 0) {
-        try {
-          const tagInput = page.locator('input[placeholder*="标签"], input[placeholder*="tag"]').first()
-          if (await tagInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-            for (const tag of content.tags.slice(0, 5)) {
-              await tagInput.fill(tag)
-              await page.keyboard.press('Enter')
-              await page.waitForTimeout(300)
-            }
-          }
-        } catch { /* 标签非必需 */ }
-      }
-
-      await page.waitForTimeout(1000)
-
-      // 6. 点击发布
-      const publishBtn = page.locator(
-        'button:has-text("发布"), button:has-text("提交"), button:has-text("发表"), .publish-btn, .submit-btn'
-      ).first()
-      await publishBtn.waitFor({ timeout: 10000 })
-      await publishBtn.click()
-
-      await page.waitForTimeout(5000)
-      const finalUrl = page.url()
+      await page.waitForTimeout(3000)
+      const url = page.url()
       await browser.close()
+      log += 'DONE'
 
-      return {
-        success: true,
-        platform: PlatformType.BILIBILI,
-        url: finalUrl,
-        message: finalUrl.includes('article') || finalUrl.includes('read') ? `发布成功！${finalUrl}` : '发布完成，请到 B站 确认',
-      }
+      fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'bili-log.txt'), log, 'utf-8')
+      return { success: true, platform: PlatformType.BILIBILI, url, message: '发布完成' }
     } catch (err: any) {
-            return { success: false, platform: PlatformType.BILIBILI, message: `B站发布异常: ${err.message}` }
+      fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'bili-log.txt'), log + ' FATAL:' + (err.message||'').slice(0,80), 'utf-8')
+      return { success: false, platform: PlatformType.BILIBILI, message: `异常: ${err.message}` }
     }
   }
 }
