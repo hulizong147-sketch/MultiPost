@@ -63,25 +63,38 @@ export class WeChatPublisher extends BasePublisher {
       }
       await page.waitForTimeout(5000)  // 确保 React 完全渲染
 
-      // 3. 标题 — native setter + InputEvent
+      // 3. 标题 — 真实选择器: #js_title_main > div > div > div > div
       try {
         await page.evaluate((text: string) => {
-          const el = document.querySelector('#title') as HTMLTextAreaElement | null
+          const sel = '#js_title_main > div > div > div > div'
+          const el = document.querySelector(sel) as HTMLElement | null
           if (!el) return
           el.focus()
-          const nativeSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
-          nativeSetter.call(el, text)
-          el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }))
+          // contenteditable div
+          if (el.getAttribute('contenteditable') != null) {
+            el.innerText = text
+            el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }))
+          } else {
+            // fallback textarea
+            const s = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+            s.call(el, text)
+            el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }))
+          }
         }, content.title)
       } catch {}
 
-      // 4. 正文 — execCommand insertHTML
+      // 4. 正文 — 真实选择器: iframe 内 #ueditor_0 > div > div > div > div > div
       try {
         await page.evaluate((html: string) => {
-          const f = document.querySelector('iframe') as HTMLIFrameElement | null
+          const f = document.querySelector('#ueditor_0, iframe') as HTMLIFrameElement | null
           const doc = f?.contentDocument
-          const b = doc?.body
-          if (b) { b.focus(); doc!.execCommand('selectAll'); doc!.execCommand('insertHTML', false, html) }
+          if (!doc) return
+          const sel = '#ueditor_0 > div > div > div > div > div, body'
+          const el = doc.querySelector(sel) as HTMLElement | null
+          if (!el) return
+          el.focus()
+          el.innerHTML = html
+          el.dispatchEvent(new Event('input', { bubbles: true }))
         }, content.body)
       } catch {}
 
