@@ -63,6 +63,7 @@ export class XiaohongshuPublisher extends BasePublisher {
           await page.locator(sel).click({ timeout: 5000 })
           await page.waitForTimeout(500)
           await page.locator('input[type="file"]').first().setInputFiles(fp, { timeout: 5000 })
+          await page.keyboard.press('Escape') // 关掉残留文件对话框
           log += 'COVER '
           await page.waitForTimeout(2000)
         }
@@ -76,24 +77,14 @@ export class XiaohongshuPublisher extends BasePublisher {
         log += 'TITLE '
       } catch (e: any) { log += 'TIT_ERR:' + (e.message||'').slice(0,20) + ' ' }
 
-      // 正文 — Ctrl+V
+      // 正文 — 纯文本，用 keyboard.type
       try {
         const el = page.locator('[contenteditable="true"]').first()
         await el.waitFor({ timeout: 10000 })
         await el.click()
-        await page.waitForTimeout(500)
-        await page.evaluate((html: string) => {
-          const d = document.createElement('div'); d.contentEditable = 'true'; d.innerHTML = html
-          d.style.cssText = 'position:fixed;left:-9999px'
-          document.body.appendChild(d); d.focus()
-          document.execCommand('selectAll'); document.execCommand('copy')
-          document.body.removeChild(d)
-        }, content.body)
-        await page.waitForTimeout(300)
-        await el.click()
-        await page.keyboard.press('Control+v')
+        await page.keyboard.type(content.body, { delay: 1 })
         log += 'BODY '
-        await page.waitForTimeout(2000)
+        await page.waitForTimeout(1000)
       } catch (e: any) { log += 'BOD_ERR:' + (e.message||'').slice(0,20) + ' ' }
 
       // 发布
