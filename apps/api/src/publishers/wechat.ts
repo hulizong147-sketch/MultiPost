@@ -63,26 +63,27 @@ export class WeChatPublisher extends BasePublisher {
       }
       await page.waitForTimeout(5000)  // 确保 React 完全渲染
 
-      // 3. 标题 — click + Ctrl+A + type
-      try {
-        await page.locator('#title').click({ force: true, timeout: 5000 })
-        await page.waitForTimeout(200)
-        await page.keyboard.press('Control+a')
-        await page.keyboard.type(content.title, { delay: 5 })
-        await page.waitForTimeout(300)
-      } catch {}
+      // 3. 标题 — native focus + execCommand（绕过 Playwright 可见性）
+      await page.evaluate((text: string) => {
+        const el = document.querySelector('#title') as HTMLTextAreaElement | null
+        if (!el) return
+        el.focus()
+        el.select()
+        document.execCommand('insertText', false, text)
+      }, content.title)
+      await page.waitForTimeout(300)
 
-      // 4. 正文 — 进 iframe → click → Ctrl+A → type
-      try {
-        const frame = page.locator('iframe').first().contentFrame()
-        const f = await frame
-        if (f) {
-          await f.locator('body').click({ timeout: 5000 })
-          await f.keyboard.press('Control+a')
-          await f.keyboard.type(content.body, { delay: 0 })
-          await page.waitForTimeout(300)
-        }
-      } catch {}
+      // 4. 正文 — iframe focus + execCommand insertHTML
+      await page.evaluate((html: string) => {
+        const f = document.querySelector('iframe') as HTMLIFrameElement | null
+        const doc = f?.contentDocument
+        const body = doc?.body
+        if (!body) return
+        body.focus()
+        doc!.execCommand('selectAll')
+        doc!.execCommand('insertHTML', false, html)
+      }, content.body)
+      await page.waitForTimeout(300)
 
       // 5. 作者
       try { await page.locator('#author').fill(content.title.slice(0, 8), { timeout: 3000 }) } catch {}
