@@ -1,0 +1,32 @@
+{
+  "name": "@multipost/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.0",
+    "@multipost/shared": "workspace:*",
+    "fastify": "^5.2",
+    "playwright": "^1.60.0",
+    "rehype-format": "^5.0.1",
+    "rehype-sanitize": "^6.0.0",
+    "rehype-stringify": "^10.0.1",
+    "remark-gfm": "^4.0",
+    "remark-parse": "^11.0",
+    "remark-rehype": "^11.1.2",
+    "remark-stringify": "^11.0",
+    "unified": "^11.0",
+    "unist-util-visit": "^5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10",
+    "tsx": "^4.19",
+    "typescript": "^5.7"
+  }
+}

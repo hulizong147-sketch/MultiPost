@@ -1,0 +1,26 @@
+{
+  "name": "@multipost/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@multipost/shared": "workspace:*",
+    "vue": "^3.5",
+    "pinia": "^2.3",
+    "@tiptap/vue-3": "^2.11",
+    "@tiptap/starter-kit": "^2.11",
+    "@tiptap/extension-placeholder": "^2.11"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2",
+    "typescript": "^5.7",
+    "vite": "^6.0",
+    "vue-tsc": "^2.2"
+  }
+}
