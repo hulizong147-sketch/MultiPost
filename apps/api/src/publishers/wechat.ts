@@ -118,37 +118,37 @@ export class WeChatPublisher extends BasePublisher {
       // 5. 作者
       try { await page.locator('#author').fill(content.title.slice(0, 8), { timeout: 3000 }) } catch {}
 
-      // 6. 封面 — 诊断模式，写每步结果
-      const imgDir2 = path.join(os.homedir(), '.multipost', 'images')
-      let coverLog = 'start'
+      // 6. 封面 — 完整流程：上传文件 → 等图出现 → 选第一张 → 下一步
       try {
+        const imgDir2 = path.join(os.homedir(), '.multipost', 'images')
         const files = fs.readdirSync(imgDir2).filter((f: string) => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
-        coverLog = 'files:' + files.length
         if (files.length > 0) {
           const fp = path.join(imgDir2, files[0])
-          // 1
+          // 1. 点封面区域
           await page.locator('text=拖拽或选择封面').click({ timeout: 5000 })
-          coverLog = '1-clicked-cover'
           await page.waitForTimeout(500)
-          // 2
+          // 2. 点「从图片库选择」
           await page.locator('#js_cover_null > ul > li:nth-child(2) > a').click({ timeout: 5000 })
-          coverLog = '2-clicked-library'
           await page.waitForTimeout(1000)
-          // 3
-          await page.locator('input[type="file"]').first().setInputFiles(fp, { timeout: 5000 })
-          coverLog = '3-setFiles'
-          await page.waitForTimeout(2000)
-          // 4. 下一步
+          // 3. 点「上传文件」并拦截 filechooser
+          const [chooser] = await Promise.all([
+            page.waitForEvent('filechooser', { timeout: 10000 }),
+            page.locator('text=上传文件').click({ timeout: 5000 }),
+          ])
+          await chooser.setFiles(fp)
+          // 4. 等上传完成（图片出现在列表）
+          await page.waitForTimeout(3000)
+          // 5. 选第一张图（点缩略图）
+          await page.locator('.weui-desktop-dialog__wrp img, .weui-desktop-media__img').first().click({ timeout: 5000 })
+          await page.waitForTimeout(500)
+          // 6. 点「下一步」
           const nextBtn = '#vue_app > mp-image-product-dialog > div > div.weui-desktop-dialog__wrp.weui-desktop-dialog_img-picker > div > div.weui-desktop-dialog__ft > div:nth-child(1) > button'
           await page.locator(nextBtn).click({ timeout: 5000 })
           await page.waitForTimeout(2000)
-          // 5. 可能还有「完成」
+          // 7. 可能还有「完成」
           try { await page.locator('button:has-text("完成")').click({ timeout: 3000 }) } catch {}
-          await page.waitForTimeout(1000)
-          coverLog = '4-done'
         }
-      } catch (e: any) { coverLog = 'ERR:' + (e?.message||'').slice(0,60) }
-      fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'cover-log.txt'), coverLog, 'utf-8')
+      } catch {}
 
       return { success: true, platform: PlatformType.WECHAT_MP, message: '公众号发布完成' }
 
