@@ -79,46 +79,29 @@ export class WeChatPublisher extends BasePublisher {
       // 5. 作者
       try { await page.locator('#author').fill(content.title.slice(0, 8), { timeout: 3000 }) } catch {}
 
-      // 6. 封面 — 详细诊断
-      let cLog = ''
+      // 6. 封面 — setFiles 已成功，接下来选图+下一步
       try {
         const imgDir2 = path.join(os.homedir(), '.multipost', 'images')
         const files = fs.readdirSync(imgDir2).filter((f: string) => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
-        cLog = 'FILES=' + files.length
         if (files.length > 0) {
           const fp = path.join(imgDir2, files[0])
-          cLog += ' FN=' + files[0]
-          // 1
           await page.locator('text=拖拽或选择封面').click({ timeout: 5000 })
           await page.waitForTimeout(500)
-          cLog += ' C1'
-          // 2
           await page.locator('#js_cover_null > ul > li:nth-child(2) > a').click({ timeout: 5000 })
           await page.waitForTimeout(1000)
-          cLog += ' C2'
-          // 3. 列表所有 input[file] 的详情
-          const count = await page.locator('input[type="file"]').count()
-          cLog += ' IN=' + count
-          const vis = []
-          for (let i = 0; i < count; i++) {
-            vis.push(await page.locator('input[type="file"]').nth(i).isVisible().catch(() => false))
-          }
-          cLog += ' VIS=' + vis.join(',')
-          // 4. 尝试每个可见的
-          for (let i = 0; i < count; i++) {
-            try {
-              await page.locator('input[type="file"]').nth(i).setInputFiles(fp, { timeout: 3000 })
-              cLog += ' SET' + i + '=OK'
-              break
-            } catch { cLog += ' SET' + i + '=FAIL' }
-          }
+          // setFiles 到隐藏的 input（已验证可行）
+          await page.locator('input[type="file"]').first().setInputFiles(fp, { timeout: 5000 })
           await page.waitForTimeout(3000)
-          // 5. 检查列表是否有图出现
-          const hasImg = await page.locator('#js_image_dialog_list_wrp img, #js_image_dialog_list_wrp i').count().catch(() => 0)
-          cLog += ' IMG=' + hasImg
+          // 选列表第一张图
+          await page.locator('#js_image_dialog_list_wrp > div > div:nth-child(1) > i').first().click({ timeout: 5000 })
+          await page.waitForTimeout(500)
+          // 点下一步
+          const nextBtn = '#vue_app > mp-image-product-dialog > div > div.weui-desktop-dialog__wrp.weui-desktop-dialog_img-picker > div > div.weui-desktop-dialog__ft > div:nth-child(1) > button'
+          await page.locator(nextBtn).click({ timeout: 5000 })
+          await page.waitForTimeout(2000)
+          try { await page.locator('button:has-text("完成")').click({ timeout: 3000 }) } catch {}
         }
-      } catch (e: any) { cLog = 'ERR:' + (e?.message||'').slice(0,80) }
-      fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'cover-log.txt'), cLog, 'utf-8')
+      } catch {}
 
       return { success: true, platform: PlatformType.WECHAT_MP, message: '公众号发布完成' }
 
