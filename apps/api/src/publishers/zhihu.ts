@@ -53,25 +53,25 @@ export class ZhihuPublisher extends BasePublisher {
         log += 'TITLE '
       } catch (e: any) { log += 'TIT_ERR:' + (e.message||'').slice(0,25) + ' ' }
 
-      // 正文 — Ctrl+V
+      // 正文 — 模拟 paste 事件（Draft.js 原生方式）
       try {
         const el = page.locator('.public-DraftEditor-content').first()
         await el.waitFor({ timeout: 10000 })
         await el.click()
         await page.waitForTimeout(500)
-        // 复制 HTML
         await page.evaluate((html: string) => {
-          const d = document.createElement('div'); d.contentEditable = 'true'; d.innerHTML = html
-          d.style.cssText = 'position:fixed;left:-9999px'
-          document.body.appendChild(d); d.focus()
-          document.execCommand('selectAll'); document.execCommand('copy')
-          document.body.removeChild(d)
+          const el = document.querySelector('.public-DraftEditor-content')
+          if (!el) return
+          el.innerHTML = ''
+          el.focus()
+          const dt = new DataTransfer()
+          dt.setData('text/html', html)
+          dt.setData('text/plain', html.replace(/<[^>]+>/g, ''))
+          const ev = new ClipboardEvent('paste', { bubbles: true, clipboardData: dt })
+          el.dispatchEvent(ev)
+          el.dispatchEvent(new Event('input', { bubbles: true }))
         }, content.body)
-        await page.waitForTimeout(300)
-        await el.click()
-        await page.keyboard.press('Control+v')
         await page.waitForTimeout(2000)
-        // 检查字数
         const charCount = await page.evaluate(() => {
           const el = document.querySelector('.public-DraftEditor-content')
           return (el as HTMLElement)?.innerText?.length || 0
