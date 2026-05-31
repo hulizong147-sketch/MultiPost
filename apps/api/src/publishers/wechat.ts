@@ -63,7 +63,7 @@ export class WeChatPublisher extends BasePublisher {
       }
       await page.waitForTimeout(5000)  // 确保 React 完全渲染
 
-      // 3. 正文 — 实锤诊断：写入前后对比
+      // 3. 正文 — 写 UEditor 自身 section 容器，不动 body
       let diag = ''
       try {
         await page.waitForTimeout(3000)
@@ -71,11 +71,17 @@ export class WeChatPublisher extends BasePublisher {
           const f = document.querySelector('iframe') as HTMLIFrameElement | null
           const doc = f?.contentDocument
           if (!doc) return 'NO_DOC'
-          if (!doc.body) return 'NO_BODY'
-          const b4 = (doc.body.innerText || '').slice(0, 60)
-          doc.body.innerHTML = html
-          const af = (doc.body.innerText || '').slice(0, 60)
-          return 'b4=[' + b4 + '] af=[' + af + '] len=' + html.length
+          const sel = '#ueditor_0 > div > div > div > div > section'
+          const el = doc.querySelector(sel) as HTMLElement | null
+          if (el) {
+            const b4 = el.innerText.slice(0, 30)
+            el.innerHTML = html
+            return 'sec:' + b4 + '→' + el.innerText.slice(0, 50)
+          }
+          // fallback: body
+          const b4 = (doc.body?.innerText||'').slice(0,30)
+          if (doc.body) doc.body.innerHTML = html
+          return 'body:' + b4 + '→' + (doc.body?.innerText||'').slice(0,50)
         }, content.body)
       } catch (e: any) { diag = 'ERR:' + (e?.message || '').slice(0, 80) }
       fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'body-diag.txt'), diag, 'utf-8')
