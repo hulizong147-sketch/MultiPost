@@ -15,17 +15,13 @@ import fs from 'fs'
 import { BasePublisher, type PublishResult } from './base.js'
 
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-const UDD_MASTER = path.join(os.homedir(), '.multipost', 'chrome-wechat')
+const UDD = path.join(os.homedir(), '.multipost', 'chrome-wechat')
 
-// 从主 profile 复制登录态 cookie 到临时目录
-function syncLogin(dir: string) {
-  if (!fs.existsSync(UDD_MASTER)) return
-  fs.mkdirSync(dir, { recursive: true })
-  const files = ['Cookies', 'Cookies-journal', 'Local State', 'Network', 'Login Data', 'Login Data-journal']
-  for (const f of files) {
-    const src = path.join(UDD_MASTER, f)
-    const dst = path.join(dir, f)
-    if (fs.existsSync(src)) try { fs.copyFileSync(src, dst) } catch {}
+// 清理 profile 锁文件
+function cleanLock() {
+  const locks = ['SingletonLock', 'SingletonCookie', 'SingletonSocket', 'lockfile']
+  for (const f of locks) {
+    try { fs.unlinkSync(path.join(UDD, f)) } catch {}
   }
 }
 
@@ -35,11 +31,10 @@ export class WeChatPublisher extends BasePublisher {
   async publish(content: PlatformContent): Promise<PublishResult> {
     const { chromium } = await import('playwright')
     let browser: any = null
-    const tempDD = path.join(os.homedir(), '.multipost', 'chrome-' + Date.now())
-    syncLogin(tempDD)
+    cleanLock()
 
     try {
-      browser = await chromium.launchPersistentContext(tempDD, {
+      browser = await chromium.launchPersistentContext(UDD, {
         headless: false, executablePath: CHROME,
         viewport: { width: 1280, height: 900 },
         args: BasePublisher.CHROME_ARGS,
@@ -68,25 +63,26 @@ export class WeChatPublisher extends BasePublisher {
       }
       await page.waitForTimeout(5000)  // 确保 React 完全渲染
 
-      // 3. 标题 — 剪贴板 + Ctrl+V（React 唯一认的方式）
-      await page.evaluate((text: string) => navigator.clipboard.writeText(text), content.title)
-      await page.locator('#title').click({ force: true, timeout: 5000 })
-      await page.waitForTimeout(200)
-      await page.keyboard.press('Control+a')
-      await page.keyboard.press('Control+v')
-      await page.waitForTimeout(300)
+      // 3. 标题 — click + Ctrl+A + type
+      try {
+        await page.locator('#title').click({ force: true, timeout: 5000 })
+        await page.waitForTimeout(200)
+        await page.keyboard.press('Control+a')
+        await page.keyboard.type(content.title, { delay: 5 })
+        await page.waitForTimeout(300)
+      } catch {}
 
-      // 4. 正文 — iframe 内 dispatchEvent click + execCommand('insertHTML')
-      await page.evaluate((html: string) => {
-        const f = document.querySelector('iframe') as HTMLIFrameElement | null
-        const doc = f?.contentDocument
-        if (!doc) return
-        doc.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-        doc.querySelector('body')?.focus()
-        doc.execCommand('selectAll')
-        doc.execCommand('insertHTML', false, html)
-      }, content.body)
-      await page.waitForTimeout(500)
+      // 4. 正文 — 进 iframe → click → Ctrl+A → type
+      try {
+        const frame = page.locator('iframe').first().contentFrame()
+        const f = await frame
+        if (f) {
+          await f.locator('body').click({ timeout: 5000 })
+          await f.keyboard.press('Control+a')
+          await f.keyboard.type(content.body, { delay: 0 })
+          await page.waitForTimeout(300)
+        }
+      } catch {}
 
       // 5. 作者
       try { await page.locator('#author').fill(content.title.slice(0, 8), { timeout: 3000 }) } catch {}
@@ -97,8 +93,6 @@ export class WeChatPublisher extends BasePublisher {
       return { success: true, platform: PlatformType.WECHAT_MP, message: '公众号发布完成' }
     } catch (err: any) {
       return { success: false, platform: PlatformType.WECHAT_MP, message: `异常: ${err.message}` }
-    } finally {
-      try { fs.rmSync(tempDD, { recursive: true, force: true }) } catch {}
     }
   }
 }
