@@ -28,7 +28,7 @@ export async function imageRoutes(app: FastifyInstance) {
         return {
           id: f,
           name: f,
-          url: `/images/file/${f}`,
+          url: `/api/images/file/${f}`,
           size: stat.size,
           createdAt: stat.birthtime.toISOString(),
         } as ImageInfo
