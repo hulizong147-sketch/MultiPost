@@ -63,16 +63,15 @@ export class WeChatPublisher extends BasePublisher {
       }
       await page.waitForTimeout(5000)  // 确保 React 完全渲染
 
-      // 3. 正文 — 等 UEditor 初始化后再写
+      // 3. 正文
+      let bodyMethod = 'not-run'
       try {
         await page.waitForTimeout(3000)
-        // 先尝试 UEditor 官方 API
         const usedUe = await page.evaluate((html: string) => {
           const ue = (window as any).UE?.getEditor?.('editor')
           if (ue?.setContent) { ue.setContent(html); return 'UE' }
           return ''
         }, content.body)
-        // 如果 UE 不存在，用 iframe innerHTML
         if (!usedUe) {
           await page.evaluate((html: string) => {
             const f = document.querySelector('iframe') as HTMLIFrameElement | null
@@ -82,9 +81,12 @@ export class WeChatPublisher extends BasePublisher {
               doc.body.dispatchEvent(new Event('input', { bubbles: true }))
             }
           }, content.body)
+          bodyMethod = 'innerHTML'
+        } else {
+          bodyMethod = 'UE'
         }
-        fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'body-method.txt'), usedUe || 'innerHTML', 'utf-8')
-      } catch {}
+      } catch (e: any) { bodyMethod = 'error:' + (e?.message || '').slice(0, 50) }
+      fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'body-method.txt'), bodyMethod, 'utf-8')
 
       // 4. 标题 — #js_title_main > div > div > div > div
       try {
