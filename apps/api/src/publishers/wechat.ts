@@ -63,29 +63,17 @@ export class WeChatPublisher extends BasePublisher {
       }
       await page.waitForTimeout(5000)  // 确保 React 完全渲染
 
-      // 3. 正文
+      // 3. 正文 — 纯 innerHTML，不碰 UE
       let bodyMethod = 'not-run'
       try {
         await page.waitForTimeout(3000)
-        const usedUe = await page.evaluate((html: string) => {
-          const ue = (window as any).UE?.getEditor?.('editor')
-          if (ue?.setContent) { ue.setContent(html); return 'UE' }
-          return ''
+        await page.evaluate((html: string) => {
+          const f = document.querySelector('iframe') as HTMLIFrameElement | null
+          const doc = f?.contentDocument
+          if (doc?.body) { doc.body.innerHTML = html }
         }, content.body)
-        if (!usedUe) {
-          await page.evaluate((html: string) => {
-            const f = document.querySelector('iframe') as HTMLIFrameElement | null
-            const doc = f?.contentDocument
-            if (doc?.body) {
-              doc.body.innerHTML = html
-              doc.body.dispatchEvent(new Event('input', { bubbles: true }))
-            }
-          }, content.body)
-          bodyMethod = 'innerHTML'
-        } else {
-          bodyMethod = 'UE'
-        }
-      } catch (e: any) { bodyMethod = 'error:' + (e?.message || '').slice(0, 50) }
+        bodyMethod = 'innerHTML'
+      } catch (e: any) { bodyMethod = 'error:' + (e?.message || '').slice(0, 60) }
       fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'body-method.txt'), bodyMethod, 'utf-8')
 
       // 4. 标题 — #js_title_main > div > div > div > div
