@@ -135,7 +135,7 @@ export class WeChatPublisher extends BasePublisher {
           coverLog = '2-clicked-library'
           await page.waitForTimeout(1000)
           // 3
-          await page.locator('input[type="file"]').setInputFiles(fp, { timeout: 5000 })
+          await page.locator('input[type="file"]').first().setInputFiles(fp, { timeout: 5000 })
           coverLog = '3-setFiles'
           await page.waitForTimeout(2000)
           // 4
