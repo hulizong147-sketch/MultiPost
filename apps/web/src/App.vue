@@ -5,12 +5,10 @@ import ImagePanel from './components/ImagePanel.vue'
 import PlatformSelector from './components/PlatformSelector.vue'
 import PreviewGrid from './components/PreviewGrid.vue'
 import TransformButton from './components/TransformButton.vue'
-import AccountModal from './components/AccountModal.vue'
 import { useEditorStore } from './stores/editor'
 
 const store = useEditorStore()
 const editorRef = ref<InstanceType<typeof EditorPanel> | null>(null)
-const showAccount = ref(false)
 
 function onInsertImage(md: string) { editorRef.value?.insertAtCursor(md) }
 </script>
@@ -30,15 +28,11 @@ function onInsertImage(md: string) { editorRef.value?.insertAtCursor(md) }
         </div>
       </div>
       <div class="header-actions">
-        <button class="ghost-btn" @click="showAccount = true">Account</button>
-        <span class="divider" />
         <button class="ghost-btn" @click="store.loadSample(editorRef)">Sample</button>
         <span class="divider" />
         <PlatformSelector />
         <span class="divider" />
         <TransformButton />
-        <button v-if="Object.keys(store.results).length" class="ghost-btn accent" @click="store.copyAll()">Copy all</button>
-        <button v-if="store.markdown.trim()" class="ghost-btn" @click="store.downloadMD()">Download MD</button>
       </div>
     </header>
 
@@ -56,7 +50,6 @@ function onInsertImage(md: string) { editorRef.value?.insertAtCursor(md) }
         <PreviewGrid v-else />
       </section>
     </main>
-    <AccountModal v-if="showAccount" @close="showAccount = false" />
   </div>
 </template>
 
