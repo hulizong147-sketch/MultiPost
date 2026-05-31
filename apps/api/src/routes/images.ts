@@ -48,7 +48,7 @@ export async function imageRoutes(app: FastifyInstance) {
     const buf = Buffer.from(data.replace(/^data:image\/\w+;base64,/, ''), 'base64')
     fs.writeFileSync(fp, buf)
     fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'img-diag.txt'), 'UPLOAD: ' + name + ' (' + buf.length + ' bytes)', 'utf-8')
-    return { id, name, url: `/images/file/${id}`, size: buf.length }
+    return { id, name, url: `/api/images/file/${id}`, size: buf.length }
   })
 
   // 删除

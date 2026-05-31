@@ -2,6 +2,8 @@
 
 **Write once, publish everywhere** — 一键将 Markdown 内容发布到多个主流平台。
 
+项目演示：[B站视频](https://www.bilibili.com/video/BV11xVQ6WEWc)
+
 ## 功能
 
 - **Markdown 编辑器** — 实时语法高亮，支持撤消/重做
@@ -71,7 +73,3 @@ apps/
     └── api/           # 前端API客户端
 packages/shared/       # 共享类型定义
 ```
-
-## 赛事
-
-腾讯云开发竞赛参赛作品
