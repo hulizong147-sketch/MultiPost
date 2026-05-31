@@ -63,23 +63,15 @@ export class WeChatPublisher extends BasePublisher {
       }
       await page.waitForTimeout(5000)  // 确保 React 完全渲染
 
-      // 3. 正文 — 打探 iframe 结构
-      let diag = ''
+      // 3. 正文 — 主页面 #ueditor_0 section（不在 iframe 里！）
       try {
         await page.waitForTimeout(3000)
-        diag = await page.evaluate((html: string) => {
-          // 主页面 iframe 的 ID
-          const f = document.querySelector('iframe') as HTMLIFrameElement | null
-          const fid = f?.id || 'no-id'
-          // iframe 内所有 ID
-          const doc = f?.contentDocument
-          const ids = doc ? Array.from(doc.querySelectorAll('[id]')).map(e=>e.id).slice(0,10).join(',') : 'NO_DOC'
-          // 也查主页面有没有 #ueditor_0
-          const main = document.querySelector('#ueditor_0')
-          return 'iframe.id=' + fid + ' | innerIDs=[' + ids + '] | main#ueditor_0=' + (main ? 'YES' : 'NO')
+        await page.evaluate((html: string) => {
+          const sel = '#ueditor_0 > div > div > div > div > section'
+          const el = document.querySelector(sel) as HTMLElement | null
+          if (el) { el.innerHTML = html; el.dispatchEvent(new Event('input', { bubbles: true })) }
         }, content.body)
-      } catch (e: any) { diag = 'ERR:' + (e?.message || '').slice(0, 80) }
-      fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'body-diag.txt'), diag, 'utf-8')
+      } catch {}
 
       // 4. 标题 — #js_title_main > div > div > div > div
       try {
