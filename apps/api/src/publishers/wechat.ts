@@ -55,11 +55,26 @@ export class WeChatPublisher extends BasePublisher {
       }
       await page.waitForTimeout(5000)
 
-      // 3. 正文 — 主页面 #ueditor_0 section
-      await page.evaluate((html: string) => {
+      // 3. 正文 — 生成封面图 + 写入主页面 #ueditor_0 section
+      await page.evaluate((data: string) => {
+        const { html, title } = JSON.parse(data)
+        // 生成一张 900x500 标题封面图
+        const c = document.createElement('canvas')
+        c.width = 900; c.height = 500
+        const ctx = c.getContext('2d')!
+        ctx.fillStyle = '#1677ff'
+        ctx.fillRect(0, 0, 900, 500)
+        ctx.fillStyle = '#fff'
+        ctx.font = 'bold 48px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(title.slice(0, 20), 450, 220)
+        ctx.font = '24px sans-serif'
+        ctx.fillText('MultiPost', 450, 300)
+        const img = '<img src="'+c.toDataURL('image/png')+'" style="width:100%;max-width:900px;margin-bottom:16px"/>'
+
         const el = document.querySelector('#ueditor_0 > div > div > div > div > section') as HTMLElement | null
-        if (el) { el.innerHTML = html; el.dispatchEvent(new Event('input', { bubbles: true })) }
-      }, content.body)
+        if (el) { el.innerHTML = img + html; el.dispatchEvent(new Event('input', { bubbles: true })) }
+      }, JSON.stringify({ html: content.body, title: content.title }))
 
       // 4. 标题 — #js_title_main
       await page.evaluate((text: string) => {
