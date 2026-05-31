@@ -120,6 +120,13 @@ export class WeChatPublisher extends BasePublisher {
             cLog += ' OK_COUNT=' + cnt
             if (cnt > 0) { await page.locator(okBtn).click({ timeout: 5000 }); cLog += ' OK=YES' }
           } catch (e: any) { cLog += ' OK=ERR:' + (e.message||'').slice(0,30) }
+          await page.waitForTimeout(1500)
+          // 预览按钮
+          try {
+            const prev = '#js_preview > button'
+            await page.locator(prev).click({ timeout: 5000 })
+            cLog += ' PREV=OK'
+          } catch (e: any) { cLog += ' PREV=ERR:' + (e.message||'').slice(0,30) }
         }
       } catch (e: any) { cLog = 'ERR:' + (e?.message||'').slice(0,80) }
       fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'cover-log.txt'), cLog, 'utf-8')
