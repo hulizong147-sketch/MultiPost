@@ -8,7 +8,7 @@ export const useImageStore = defineStore('images', () => {
 
   async function load() {
     loading.value = true
-    try { images.value = await fetchImages() } catch {}
+    try { images.value = await fetchImages() } catch (e) { console.error('[images] load error:', e) }
     loading.value = false
   }
 
