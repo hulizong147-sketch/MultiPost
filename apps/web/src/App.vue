@@ -12,7 +12,7 @@ const store = useEditorStore()
 const editorRef = ref<InstanceType<typeof EditorPanel> | null>(null)
 const showAccount = ref(false)
 
-function onInsertImage(md: string) { editorRef.value?.setContent(store.markdown + '\n' + md) }
+function onInsertImage(md: string) { editorRef.value?.insertAtCursor(md) }
 </script>
 
 <template>

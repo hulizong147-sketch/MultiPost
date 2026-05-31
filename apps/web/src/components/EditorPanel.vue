@@ -107,7 +107,16 @@ function setContent(text: string) {
   })
 }
 
-defineExpose({ setContent })
+function insertAtCursor(text: string) {
+  if (!editorView) return
+  const pos = editorView.state.selection.main.head
+  editorView.dispatch({
+    changes: { from: pos, insert: '\n' + text + '\n' },
+    selection: { anchor: pos + text.length + 2 },
+  })
+}
+
+defineExpose({ setContent, insertAtCursor })
 </script>
 
 <template>
