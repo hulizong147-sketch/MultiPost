@@ -118,34 +118,25 @@ export class WeChatPublisher extends BasePublisher {
       // 5. 作者
       try { await page.locator('#author').fill(content.title.slice(0, 8), { timeout: 3000 }) } catch {}
 
-      // 6. 封面 — 完整流程：上传文件 → 等图出现 → 选第一张 → 下一步
+      // 6. 封面 — 从图片库选第一张 → 下一步
       try {
         const imgDir2 = path.join(os.homedir(), '.multipost', 'images')
-        const files = fs.readdirSync(imgDir2).filter((f: string) => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
-        if (files.length > 0) {
-          const fp = path.join(imgDir2, files[0])
+        const hasFiles = fs.readdirSync(imgDir2).some((f: string) => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
+        if (hasFiles) {
           // 1. 点封面区域
           await page.locator('text=拖拽或选择封面').click({ timeout: 5000 })
           await page.waitForTimeout(500)
           // 2. 点「从图片库选择」
           await page.locator('#js_cover_null > ul > li:nth-child(2) > a').click({ timeout: 5000 })
-          await page.waitForTimeout(1000)
-          // 3. 点「上传文件」并拦截 filechooser
-          const [chooser] = await Promise.all([
-            page.waitForEvent('filechooser', { timeout: 10000 }),
-            page.locator('text=上传文件').click({ timeout: 5000 }),
-          ])
-          await chooser.setFiles(fp)
-          // 4. 等上传完成（图片出现在列表）
-          await page.waitForTimeout(3000)
-          // 5. 选第一张图（点缩略图）
+          await page.waitForTimeout(1500)
+          // 3. 选第一张缩略图
           await page.locator('.weui-desktop-dialog__wrp img, .weui-desktop-media__img').first().click({ timeout: 5000 })
           await page.waitForTimeout(500)
-          // 6. 点「下一步」
+          // 4. 点「下一步」
           const nextBtn = '#vue_app > mp-image-product-dialog > div > div.weui-desktop-dialog__wrp.weui-desktop-dialog_img-picker > div > div.weui-desktop-dialog__ft > div:nth-child(1) > button'
           await page.locator(nextBtn).click({ timeout: 5000 })
           await page.waitForTimeout(2000)
-          // 7. 可能还有「完成」
+          // 5. 可能还有「完成」
           try { await page.locator('button:has-text("完成")').click({ timeout: 3000 }) } catch {}
         }
       } catch {}
