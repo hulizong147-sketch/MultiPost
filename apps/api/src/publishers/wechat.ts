@@ -11,10 +11,23 @@ import { PlatformType } from '@multipost/shared'
 import type { PlatformContent } from '@multipost/shared'
 import path from 'path'
 import os from 'os'
+import fs from 'fs'
 import { BasePublisher, type PublishResult } from './base.js'
 
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-const UDD = path.join(os.homedir(), '.multipost', 'chrome-wechat')
+const UDD_MASTER = path.join(os.homedir(), '.multipost', 'chrome-wechat')
+
+// 从主 profile 复制登录态 cookie 到临时目录
+function syncLogin(dir: string) {
+  if (!fs.existsSync(UDD_MASTER)) return
+  fs.mkdirSync(dir, { recursive: true })
+  const files = ['Cookies', 'Cookies-journal', 'Local State', 'Network', 'Login Data', 'Login Data-journal']
+  for (const f of files) {
+    const src = path.join(UDD_MASTER, f)
+    const dst = path.join(dir, f)
+    if (fs.existsSync(src)) try { fs.copyFileSync(src, dst) } catch {}
+  }
+}
 
 export class WeChatPublisher extends BasePublisher {
   readonly platformType = PlatformType.WECHAT_MP
@@ -22,9 +35,11 @@ export class WeChatPublisher extends BasePublisher {
   async publish(content: PlatformContent): Promise<PublishResult> {
     const { chromium } = await import('playwright')
     let browser: any = null
+    const tempDD = path.join(os.homedir(), '.multipost', 'chrome-' + Date.now())
+    syncLogin(tempDD)
 
     try {
-      browser = await chromium.launchPersistentContext(UDD, {
+      browser = await chromium.launchPersistentContext(tempDD, {
         headless: false, executablePath: CHROME,
         viewport: { width: 1280, height: 900 },
         args: BasePublisher.CHROME_ARGS,
@@ -82,6 +97,8 @@ export class WeChatPublisher extends BasePublisher {
       return { success: true, platform: PlatformType.WECHAT_MP, message: '公众号发布完成' }
     } catch (err: any) {
       return { success: false, platform: PlatformType.WECHAT_MP, message: `异常: ${err.message}` }
+    } finally {
+      try { fs.rmSync(tempDD, { recursive: true, force: true }) } catch {}
     }
   }
 }
