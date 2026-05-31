@@ -63,7 +63,28 @@ export class ZhihuPublisher extends BasePublisher {
         if (el) { el.innerHTML = html; el.dispatchEvent(new Event('input', { bubbles: true })) }
       }, content.body)
       await page.waitForTimeout(1000)
-      await page.waitForTimeout(1000)
+
+      // 封面 — 滚到封面区域，上传项目图片
+      try {
+        const imgDir = path.join(os.homedir(), '.multipost', 'images')
+        const files = fs.readdirSync(imgDir).filter(f => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
+        if (files.length > 0) {
+          const fp = path.join(imgDir, files[0])
+          // 滚动到底部找封面
+          await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+          await page.waitForTimeout(1000)
+          // 用用户提供的选择器
+          const sel = '#root > div > main > div > div.WriteIndexLayout-main > div.WriteIndexMain > div > div.PostEditor-wrapper > div.css-13mrzb0 > div.css-mfq34p > div > div > label > input'
+          const coverInput = page.locator(sel).first()
+          if (await coverInput.count() > 0) {
+            await coverInput.setInputFiles(fp, { timeout: 5000 })
+          } else {
+            // fallback: 找包含封面的 label 里的 input[file]
+            await page.locator('label:has-text("封面") input[type="file"], input[type="file"]').first().setInputFiles(fp, { timeout: 5000 })
+          }
+          await page.waitForTimeout(2000)
+        }
+      } catch {}
 
       // 点击发布
       const publishBtn = page.locator(
