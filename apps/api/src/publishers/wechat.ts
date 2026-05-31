@@ -53,31 +53,25 @@ export class WeChatPublisher extends BasePublisher {
       }
       await page.waitForTimeout(5000)  // 确保 React 完全渲染
 
-      // 3. 标题 — dispatchEvent click + native setter
-      let titleOk = false
-      for (let retry = 0; retry < 3 && !titleOk; retry++) {
-        await page.evaluate((text: string) => {
-          const el = document.querySelector('#title') as HTMLTextAreaElement
-          if (!el) return
-          el.scrollIntoView({ block: 'center' })
-          el.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-          el.focus()
-          const s = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
-          s.call(el, text)
-          el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }))
-        }, content.title)
-        await page.waitForTimeout(500)
-        titleOk = (await page.locator('#title').inputValue().catch(() => '')).length > 0
-      }
+      // 3. 标题 — 剪贴板 + Ctrl+V（React 唯一认的方式）
+      await page.evaluate((text: string) => navigator.clipboard.writeText(text), content.title)
+      await page.locator('#title').click({ force: true, timeout: 5000 })
+      await page.waitForTimeout(200)
+      await page.keyboard.press('Control+a')
+      await page.keyboard.press('Control+v')
+      await page.waitForTimeout(300)
 
-      // 4. 正文 — iframe innerHTML
+      // 4. 正文 — iframe 内 dispatchEvent click + execCommand('insertHTML')
       await page.evaluate((html: string) => {
         const f = document.querySelector('iframe') as HTMLIFrameElement | null
         const doc = f?.contentDocument
-        const el = doc?.querySelector('[contenteditable="true"]') || doc?.body
-        if (el) { el.innerHTML = html; el.dispatchEvent(new Event('input', { bubbles: true })) }
+        if (!doc) return
+        doc.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+        doc.querySelector('body')?.focus()
+        doc.execCommand('selectAll')
+        doc.execCommand('insertHTML', false, html)
       }, content.body)
-      await page.waitForTimeout(300)
+      await page.waitForTimeout(500)
 
       // 5. 作者
       try { await page.locator('#author').fill(content.title.slice(0, 8), { timeout: 3000 }) } catch {}
