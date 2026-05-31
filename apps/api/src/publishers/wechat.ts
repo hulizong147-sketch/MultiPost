@@ -63,15 +63,26 @@ export class WeChatPublisher extends BasePublisher {
       }
       await page.waitForTimeout(5000)  // 确保 React 完全渲染
 
-      // 3. 正文 — 先填，给 iframe 加载时间
+      // 3. 正文 — 系统剪贴板 + Playwright Ctrl+V
       try {
-        await page.waitForTimeout(2000)
         await page.evaluate((html: string) => {
-          const f = document.querySelector('iframe') as HTMLIFrameElement | null
-          const doc = f?.contentDocument
-          const el = doc?.querySelector('[contenteditable="true"]') || doc?.body
-          if (el) { el.innerHTML = html; el.dispatchEvent(new Event('input', { bubbles: true })) }
+          const div = document.createElement('div')
+          div.contentEditable = 'true'
+          div.innerHTML = html
+          div.style.cssText = 'position:fixed;left:-9999px'
+          document.body.appendChild(div)
+          div.focus()
+          document.execCommand('selectAll')
+          document.execCommand('copy')
+          document.body.removeChild(div)
         }, content.body)
+        await page.waitForTimeout(500)
+        const frame = page.frameLocator('iframe').first()
+        await frame.locator('body').click({ timeout: 5000 })
+        await page.waitForTimeout(300)
+        await page.keyboard.press('Control+a')
+        await page.keyboard.press('Control+v')
+        await page.waitForTimeout(500)
       } catch {}
 
       // 4. 标题 — #js_title_main > div > div > div > div
