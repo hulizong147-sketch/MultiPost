@@ -63,13 +63,14 @@ export class WeChatPublisher extends BasePublisher {
       }
       await page.waitForTimeout(5000)  // 确保 React 完全渲染
 
-      // 3. 标题 — native focus + execCommand（绕过 Playwright 可见性）
+      // 3. 标题 — native value setter + InputEvent（唯一靠谱方案）
       await page.evaluate((text: string) => {
         const el = document.querySelector('#title') as HTMLTextAreaElement | null
         if (!el) return
         el.focus()
-        el.select()
-        document.execCommand('insertText', false, text)
+        const s = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+        s.call(el, text)
+        el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }))
       }, content.title)
       await page.waitForTimeout(300)
 
