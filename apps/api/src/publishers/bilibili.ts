@@ -44,6 +44,9 @@ export class BilibiliPublisher extends BasePublisher {
       }
       log += 'LOGIN '
 
+      // 诊断：截图 + 页面URL
+      await page.screenshot({ path: path.join(os.homedir(), 'Desktop', 'bili-page.png') })
+      log += 'URL=' + page.url().slice(0, 60) + ' SCREEN '
       // 标题
       try {
         const t = page.locator('input[placeholder*="标题"], [class*="title"] input').first()
