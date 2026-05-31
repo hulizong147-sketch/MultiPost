@@ -63,7 +63,18 @@ export class WeChatPublisher extends BasePublisher {
       }
       await page.waitForTimeout(5000)  // 确保 React 完全渲染
 
-      // 3. 标题 — 真实选择器: #js_title_main > div > div > div > div
+      // 3. 正文 — 先填，给 iframe 加载时间
+      try {
+        await page.waitForTimeout(2000)
+        await page.evaluate((html: string) => {
+          const f = document.querySelector('iframe') as HTMLIFrameElement | null
+          const doc = f?.contentDocument
+          const el = doc?.querySelector('[contenteditable="true"]') || doc?.body
+          if (el) { el.innerHTML = html; el.dispatchEvent(new Event('input', { bubbles: true })) }
+        }, content.body)
+      } catch {}
+
+      // 4. 标题 — #js_title_main > div > div > div > div
       try {
         await page.evaluate((text: string) => {
           const sel = '#js_title_main > div > div > div > div'
@@ -81,20 +92,6 @@ export class WeChatPublisher extends BasePublisher {
             el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }))
           }
         }, content.title)
-      } catch {}
-
-      // 4. 正文 — 自动测试验证✅的方案: doc.body innerHTML
-      try {
-        await page.waitForTimeout(2000)  // 给 iframe 多等下
-        const done = await page.evaluate((html: string) => {
-          const f = document.querySelector('iframe') as HTMLIFrameElement | null
-          const doc = f?.contentDocument
-          const el = doc?.querySelector('[contenteditable="true"]') || doc?.body
-          if (!el) return 0
-          el.innerHTML = html
-          el.dispatchEvent(new Event('input', { bubbles: true }))
-          return 1
-        }, content.body)
       } catch {}
 
       // 5. 作者
