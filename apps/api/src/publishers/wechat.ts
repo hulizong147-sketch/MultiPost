@@ -83,16 +83,25 @@ export class WeChatPublisher extends BasePublisher {
         }, content.title)
       } catch {}
 
-      // 4. 正文 — execCommand insertHTML（之前验证✅过的）
+      // 4. 正文 — 自检模式
       try {
-        await page.evaluate((html: string) => {
+        // ⬇️ 改这里试不同选择器
+        const BODY_SEL = 'body'
+        await page.evaluate((sel: string) => {
           const f = document.querySelector('iframe') as HTMLIFrameElement | null
           const doc = f?.contentDocument
-          if (!doc?.body) return
-          doc.body.focus()
-          doc.execCommand('selectAll')
-          doc.execCommand('insertHTML', false, html)
-        }, content.body)
+          if (!doc) { (window as any).__diag = 'NO IFRAME' ; return }
+          const el = doc.querySelector(sel) as HTMLElement | null
+          if (el) {
+            el.focus()
+            ;(window as any).__diag = 'FOUND 1'
+          } else {
+            const ids = Array.from(doc.querySelectorAll('[id]')).map(e => e.id).slice(0, 20).join(',')
+            ;(window as any).__diag = 'FOUND 0 | IDs:' + ids
+          }
+        }, BODY_SEL)
+        const diag = await page.evaluate(() => (window as any).__diag || '')
+        fs.writeFileSync(path.join(os.homedir(), 'Desktop', 'wechat-diag.txt'), diag, 'utf-8')
       } catch {}
 
       // 5. 作者
