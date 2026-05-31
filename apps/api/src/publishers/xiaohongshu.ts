@@ -53,17 +53,14 @@ export class XiaohongshuPublisher extends BasePublisher {
         await page.waitForTimeout(1000)
       } catch (e: any) { log += 'TAB_ERR:' + (e.message||'').slice(0,20) + ' ' }
 
-      // 封面 — 点上传区域 + filechooser
+      // 封面 — 直接用 setInputFiles 到隐藏 input，不点上传区
       try {
         const imgDir = path.join(os.homedir(), '.multipost', 'images')
         const files = fs.readdirSync(imgDir).filter((f: string) => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
         if (files.length > 0) {
           const fp = path.join(imgDir, files[0])
-          const sel = '#web > div > div > div > div.upload-content.hasBannerHeight > div.upload-wrapper > div > div'
-          await page.locator(sel).click({ timeout: 5000 })
-          await page.waitForTimeout(500)
+          // 不点击，直接用 setInputFiles
           await page.locator('input[type="file"]').first().setInputFiles(fp, { timeout: 5000 })
-          await page.keyboard.press('Escape') // 关掉残留文件对话框
           log += 'COVER '
           await page.waitForTimeout(2000)
         }
