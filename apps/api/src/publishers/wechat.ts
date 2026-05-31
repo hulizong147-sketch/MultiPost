@@ -83,16 +83,15 @@ export class WeChatPublisher extends BasePublisher {
         }, content.title)
       } catch {}
 
-      // 4. 正文 — doc.body（已验证可行）
+      // 4. 正文 — execCommand insertHTML（之前验证✅过的）
       try {
         await page.evaluate((html: string) => {
           const f = document.querySelector('iframe') as HTMLIFrameElement | null
           const doc = f?.contentDocument
-          const el = doc?.body
-          if (!el) return
-          el.focus()
-          el.innerHTML = html
-          el.dispatchEvent(new Event('input', { bubbles: true }))
+          if (!doc?.body) return
+          doc.body.focus()
+          doc.execCommand('selectAll')
+          doc.execCommand('insertHTML', false, html)
         }, content.body)
       } catch {}
 
