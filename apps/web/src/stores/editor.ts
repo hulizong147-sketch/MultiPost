@@ -43,6 +43,8 @@ const STATIC_PLATFORMS: PlatformMeta[] = [
   { type: PlatformType.ZHIHU, name: '知乎', description: '', docsUrl: '', titleMaxLength: 100, bodyMaxLength: null, supportMarkdown: true, allowExternalLinks: true, hashtagMaxCount: 5 },
   { type: PlatformType.XIAOHONGSHU, name: '小红书', description: '', docsUrl: '', titleMaxLength: 20, bodyMaxLength: 1000, supportMarkdown: false, allowExternalLinks: false, hashtagMaxCount: 10 },
   { type: PlatformType.BILIBILI, name: 'B站', description: '', docsUrl: '', titleMaxLength: 40, bodyMaxLength: null, supportMarkdown: false, allowExternalLinks: true, hashtagMaxCount: 5 },
+  { type: PlatformType.TOUTIAO, name: '头条', description: '', docsUrl: '', titleMaxLength: 30, bodyMaxLength: null, supportMarkdown: false, allowExternalLinks: false, hashtagMaxCount: 3 },
+  { type: PlatformType.CSDN, name: 'CSDN', description: '', docsUrl: '', titleMaxLength: 100, bodyMaxLength: null, supportMarkdown: true, allowExternalLinks: true, hashtagMaxCount: 5 },
 ]
 
 export const useEditorStore = defineStore('editor', () => {
